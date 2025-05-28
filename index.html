@@ -39,7 +39,6 @@
         }
         .calendar-cell {
             min-height: 120px; /* Adjusted min-height for potentially more content */
-            /* border: 1px solid transparent; */ /* Border provided by grid gap and bg */
         }
         .event-marker {
             width: 8px;
@@ -93,38 +92,42 @@
         .settings-modal-section h4 {
             @apply text-lg font-semibold mb-2 text-gray-700 dark:text-gray-300 pt-2;
         }
+        #loading-status-in-settings {
+            @apply text-sm text-gray-500 dark:text-gray-400 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700;
+        }
     </style>
 </head>
 <body class="font-sans antialiased transition-colors duration-300 ease-in-out bg-gray-100 dark:bg-gray-900">
 
     <div id="app-container" class="min-h-screen text-gray-800 dark:text-gray-200 p-4 transition-colors duration-300 ease-in-out">
         <header class="navigation-controls mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow transition-colors duration-300 ease-in-out">
-            <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
                 <div class="flex items-center space-x-2 sm:space-x-4">
                     <button id="prev-month" class="px-3 py-2 sm:px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-md shadow">&lt; Prev</button>
                     <div class="text-center">
-                        <h2 id="current-month-year" class="text-xl md:text-2xl font-semibold min-w-[180px] sm:min-w-[200px]"></h2>
+                        <h2 id="current-month-year" class="text-xl md:text-2xl font-semibold min-w-[160px] sm:min-w-[180px]"></h2>
                         <p id="current-year-month-numeric" class="text-xs text-gray-500 dark:text-gray-400"></p>
                     </div>
                     <button id="next-month" class="px-3 py-2 sm:px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-md shadow">Next &gt;</button>
                 </div>
+
+                <div id="zodiac-display" class="text-center text-sm sm:text-base font-medium text-indigo-600 dark:text-indigo-400 transition-colors duration-300 ease-in-out w-full lg:w-auto order-first lg:order-none">
+                    </div>
+
                 <div class="flex items-center space-x-2 sm:space-x-4">
                     <button id="settings-button" class="px-3 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-md shadow text-sm sm:text-base">⚙️ Settings</button>
                     <button id="search-button" class="px-3 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-md shadow text-sm sm:text-base">🔍 Search</button>
                     <button id="today-button" class="px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md shadow text-sm sm:text-base">Today</button>
                     <button id="lore-button" class="px-3 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-md shadow text-sm sm:text-base">Hiraeth Lore</button>
-                    </div>
+                </div>
             </div>
-            <div id="zodiac-display" class="mt-3 text-center text-lg font-medium text-indigo-600 dark:text-indigo-400 transition-colors duration-300 ease-in-out"></div>
-
-            <p id="loading-calendars-message" class="mt-4 text-sm text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-2">Loading calendars...</p>
-        </header>
+            </header>
 
         <main id="calendar-view" class="bg-white dark:bg-gray-800 p-1 rounded-lg shadow transition-colors duration-300 ease-in-out">
             <div id="month-grid-header" class="calendar-grid bg-gray-300 dark:bg-gray-600 mb-1 rounded-t-md transition-colors duration-300 ease-in-out">
-                </div>
+            </div>
             <div id="month-grid-days" class="calendar-grid bg-gray-300 dark:bg-gray-600 rounded-b-md transition-colors duration-300 ease-in-out">
-                </div>
+            </div>
         </main>
 
         <div id="event-modal" class="modal-backdrop hidden">
@@ -134,7 +137,7 @@
                     <button id="close-modal" class="text-gray-600 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 text-2xl">&times;</button>
                 </div>
                 <div id="modal-body" class="space-y-3">
-                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -165,7 +168,7 @@
                 granularity: 8,
                 phases: ["🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"]
             },
-            calendarEpochStart: { year: 1, month: 0, day: 1 }, // Hiraeth year 1, Novnus 1
+            calendarEpochStart: { year: 1, month: 0, day: 1 },
             loreText: `
                 <h4 class="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-100">Hiraeth Time System</h4>
                 <p class="mb-2 text-gray-700 dark:text-gray-300">Dates are written YY-MM-DD. The days and months are unique to Hiraeth.</p>
@@ -190,9 +193,10 @@
 
         // --- APPLICATION STATE (DEFAULTS) ---
         let hiraethYear = 76;
-        let hiraethMonth = 2;  // 0-indexed (Concis)
-        let hiraethDay = 21;   // Current day in Hiraeth
-        let showMoonPhases = true; // Default to showing moon phases
+        let hiraethMonth = 2;
+        let hiraethDay = 21;
+        let showMoonPhases = true;
+        let calendarLoadingStatusMessage = "Loading calendars..."; // MODIFICATION: Store status message
 
         const calendarFilesToLoad = [
             "../calendars/sample_hiraeth_events.json",
@@ -215,13 +219,11 @@
         const loreButton = document.getElementById('lore-button');
         const searchButton = document.getElementById('search-button');
         const settingsButton = document.getElementById('settings-button');
-
         const eventModal = document.getElementById('event-modal');
         const modalTitle = document.getElementById('modal-title');
         const modalBody = document.getElementById('modal-body');
         const closeModalButton = document.getElementById('close-modal');
-        const loadingCalendarsMessage = document.getElementById('loading-calendars-message');
-
+        // MODIFICATION: Removed loadingCalendarsMessageEl as it's no longer in main HTML
 
         // --- THEME HANDLING ---
         function setInitialTheme() {
@@ -244,7 +246,6 @@
             localStorage.setItem('hiraethCalendarTheme', newTheme);
         }
 
-
         // --- UTILITY FUNCTIONS ---
         function hiraethDateToGlobalEpochDays(year, monthIndex, dayOfMonth) {
             let totalDays = 0;
@@ -257,7 +258,6 @@
             totalDays += dayOfMonth;
             return totalDays;
         }
-
         function isHiraethLeapYear(year) { return false; }
         function getHiraethDaysInMonth(year, monthIndex) {
             if (monthIndex < 0 || monthIndex >= HIRAETH_CONFIG.months.length) {
@@ -266,7 +266,6 @@
             }
             return HIRAETH_CONFIG.months[monthIndex].days;
         }
-
         function getLuminusMoonPhase(year, month, day) {
             const currentGlobalEpochDay = hiraethDateToGlobalEpochDays(year, month, day);
             const moon = HIRAETH_CONFIG.primaryMoon;
@@ -276,7 +275,6 @@
             const phaseIndex = Math.floor(phaseValue * moon.granularity);
             return phaseIndex < moon.phases.length ? phaseIndex : moon.phases.length -1 ;
         }
-
 
         // --- MODAL HANDLING ---
         function openModal(title, contentHtml, isSettingsModal = false) {
@@ -290,7 +288,6 @@
         function closeModal() {
             if (eventModal) eventModal.classList.add('hidden');
         }
-
 
         // --- EVENT DATA MANAGEMENT & SETTINGS MODAL ---
         function getVisibleEvents() {
@@ -338,9 +335,11 @@
         }
 
         function openSettingsModal() {
+            // MODIFICATION: Add loading status message to the settings modal
+            const loadingStatusHTML = `<div id="loading-status-in-settings">${calendarLoadingStatusMessage}</div>`;
             const calendarTogglesHTML = getCalendarTogglesHTML();
             const moonPhaseToggleHTML = getMoonPhaseToggleHTML();
-            openModal("Calendar Settings", calendarTogglesHTML + moonPhaseToggleHTML, true);
+            openModal("Calendar Settings", loadingStatusHTML + calendarTogglesHTML + moonPhaseToggleHTML, true);
         }
 
         function addSettingsModalEventListeners() {
@@ -393,12 +392,14 @@
         }
 
         async function loadAllDefinedCalendars() {
-            if (loadingCalendarsMessage) loadingCalendarsMessage.classList.remove('hidden');
+            // MODIFICATION: Update global status message instead of a specific DOM element
+            calendarLoadingStatusMessage = "Loading calendars...";
             if (calendarFilesToLoad.length === 0) {
-                if(loadingCalendarsMessage) loadingCalendarsMessage.textContent = "No external calendars defined to load.";
+                calendarLoadingStatusMessage = "No external calendars defined to load.";
                 console.log("[loadAllDefinedCalendars] No calendar files to load.");
                 return;
             }
+
             console.log("[loadAllDefinedCalendars] Starting to load calendar files:", calendarFilesToLoad);
             const loadPromises = calendarFilesToLoad.map(filePath => loadCalendarFile(filePath));
             const results = await Promise.allSettled(loadPromises);
@@ -408,14 +409,13 @@
                     loadedCount++;
                 }
             });
-            if (loadingCalendarsMessage) {
-                if (loadedCount > 0) {
-                    loadingCalendarsMessage.textContent = `${loadedCount} of ${calendarFilesToLoad.length} external calendars loaded.`;
-                } else {
-                    loadingCalendarsMessage.textContent = `Failed to load any external calendars. Check console.`;
-                }
+
+            if (loadedCount > 0) {
+                calendarLoadingStatusMessage = `${loadedCount} of ${calendarFilesToLoad.length} external calendars loaded.`;
+            } else {
+                calendarLoadingStatusMessage = `Failed to load any external calendars. Check console.`;
             }
-            console.log(`[loadAllDefinedCalendars] Finished loading. ${loadedCount} successful.`);
+            console.log(`[loadAllDefinedCalendars] Finished loading. ${loadedCount} successful. Status: ${calendarLoadingStatusMessage}`);
         }
 
 
@@ -438,9 +438,14 @@
 
                 if (currentMonthYearEl) currentMonthYearEl.textContent = `${monthData.name}, ${String(hiraethYear).padStart(4, '0')}`;
                 if (currentYearMonthNumericEl) currentYearMonthNumericEl.textContent = `${String(hiraethYear).padStart(4, '0')}-${String(hiraethMonth + 1).padStart(2, '0')}`;
-                if (zodiacDisplayEl) zodiacDisplayEl.innerHTML = `
-                    <strong class="text-gray-800 dark:text-gray-100">Zodiac: ${monthData.zodiac}</strong>
-                    <p class="text-sm text-gray-600 dark:text-gray-400">${monthData.zodiacInfo}</p>`;
+                
+                // MODIFICATION: Zodiac display content set here
+                if (zodiacDisplayEl) {
+                     zodiacDisplayEl.innerHTML = `
+                        <strong class="block text-gray-800 dark:text-gray-100">${monthData.zodiac}</strong>
+                        <span class="text-xs text-gray-600 dark:text-gray-400">${monthData.zodiacInfo}</span>`;
+                }
+
 
                 if (monthGridHeaderEl) {
                     monthGridHeaderEl.innerHTML = '';
@@ -469,7 +474,6 @@
 
                     for (let day = 1; day <= daysInMonth; day++) {
                         const cell = document.createElement('div');
-                        // MODIFICATION: Main cell is p-2, relative, flex flex-col.
                         cell.className = 'calendar-cell p-2 border-transparent cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900 relative bg-white dark:bg-gray-800 flex flex-col';
 
                         const currentDayGlobalEpoch = hiraethDateToGlobalEpochDays(hiraethYear, hiraethMonth, day);
@@ -479,9 +483,8 @@
                             cell.classList.remove('bg-white', 'dark:bg-gray-800');
                         }
 
-                        // MODIFICATION: Top row container for day number and moon phase
                         const topRowContainer = document.createElement('div');
-                        topRowContainer.className = 'flex justify-between items-start w-full mb-1'; // mb-1 for spacing
+                        topRowContainer.className = 'flex justify-between items-start w-full mb-1';
 
                         const dayNumberEl = document.createElement('span');
                         dayNumberEl.className = 'text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100';
@@ -492,25 +495,22 @@
                             const moonPhaseIndex = getLuminusMoonPhase(hiraethYear, hiraethMonth, day);
                             const moonEmoji = HIRAETH_CONFIG.primaryMoon.phases[moonPhaseIndex];
                             const moonPhaseEl = document.createElement('div');
-                            moonPhaseEl.className = 'text-lg text-gray-700 dark:text-gray-300 hidden sm:block'; // No longer centered by itself, alignment handled by flex parent
+                            moonPhaseEl.className = 'text-lg text-gray-700 dark:text-gray-300 hidden sm:block';
                             moonPhaseEl.textContent = moonEmoji;
                             topRowContainer.appendChild(moonPhaseEl);
                         } else {
-                            // Add a placeholder if moon phases are off to maintain layout consistency with justify-between
                             const moonPlaceholder = document.createElement('div');
-                            moonPlaceholder.className = 'w-6 h-6'; // Approx size of moon emoji
+                            moonPlaceholder.className = 'w-6 h-6';
                             topRowContainer.appendChild(moonPlaceholder);
                         }
                         cell.appendChild(topRowContainer);
-
 
                         const dateString = `${String(hiraethYear).padStart(4, '0')}-${String(hiraethMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                         const dayEvents = currentVisibleEvents.filter(event => event.date === dateString);
 
                         if (dayEvents.length > 0) {
                             const eventsContainer = document.createElement('div');
-                            // MODIFICATION: Adjusted max-h, removed items-center as events are full width
-                            eventsContainer.className = 'w-full space-y-1 px-1 max-h-[calc(100%-2.5rem)] overflow-y-auto'; // 2.5rem approx height of topRow + margin
+                            eventsContainer.className = 'w-full space-y-1 px-1 max-h-[calc(100%-2.5rem)] overflow-y-auto';
 
                             dayEvents.slice(0, 2).forEach(event => {
                                 const eventMarker = document.createElement('div');
@@ -522,10 +522,8 @@
                                 eventTitle.className = 'truncate';
                                 eventTitle.textContent = event.title;
                                 eventMarker.appendChild(eventTitle);
-
-                                // MODIFICATION: Click listener for individual event
                                 eventMarker.addEventListener('click', (e) => {
-                                    e.stopPropagation(); // Prevent cell click
+                                    e.stopPropagation();
                                     showSingleEventDetails(event, hiraethYear, hiraethMonth, day);
                                 });
                                 eventsContainer.appendChild(eventMarker);
@@ -534,18 +532,15 @@
                                 const moreEventsEl = document.createElement('div');
                                 moreEventsEl.className = 'text-xs text-blue-600 dark:text-blue-400 text-center font-medium cursor-pointer hover:underline';
                                 moreEventsEl.textContent = `+${dayEvents.length - 2} more`;
-                                // MODIFICATION: Click listener for "more events"
                                 moreEventsEl.addEventListener('click', (e) => {
-                                    e.stopPropagation(); // Prevent cell click
+                                    e.stopPropagation();
                                     showDateDetails(hiraethYear, hiraethMonth, day, dayEvents);
                                 });
                                 eventsContainer.appendChild(moreEventsEl);
                             }
                             cell.appendChild(eventsContainer);
                         }
-                        // MODIFICATION: Cell click listener (for areas not covered by specific event markers)
                         cell.addEventListener('click', () => {
-                            // This will trigger if the click is not on an event marker or "more events" link due to stopPropagation
                             showDateDetails(hiraethYear, hiraethMonth, day, dayEvents);
                         });
                         monthGridDaysEl.appendChild(cell);
@@ -560,18 +555,15 @@
             }
         }
 
-        // MODIFICATION: New function to show details for a single event
         function showSingleEventDetails(eventObj, year, month, day) {
             const monthName = HIRAETH_CONFIG.months[month].name;
             const dayGlobalEpoch = hiraethDateToGlobalEpochDays(year, month, day);
             const dayName = HIRAETH_CONFIG.daysOfWeek[ (dayGlobalEpoch - 1 + HIRAETH_CONFIG.daysOfWeek.length) % HIRAETH_CONFIG.daysOfWeek.length ];
-
             let modalDialogTitle = `Event: ${eventObj.title}`;
             let content = `<p class="text-md mb-1 text-gray-600 dark:text-gray-400">On: ${dayName}, ${day} ${monthName} ${String(year).padStart(4, '0')}</p>`;
             content += `<p class="text-lg mb-2 text-gray-700 dark:text-gray-300">Luminus Moon: ${HIRAETH_CONFIG.primaryMoon.phases[getLuminusMoonPhase(year, month, day)]}</p>`;
-
             content += `<h5 class="text-md font-semibold mt-3 mb-1 text-gray-800 dark:text-gray-100">Details:</h5>`;
-            content += '<ul id="modal-event-list" class="list-none space-y-1 text-gray-700 dark:text-gray-300">'; // Changed to list-none for single event
+            content += '<ul id="modal-event-list" class="list-none space-y-1 text-gray-700 dark:text-gray-300">';
             content += `
                 <li>
                     <strong class="text-gray-800 dark:text-gray-200 text-xl">${eventObj.title}</strong>
@@ -583,14 +575,12 @@
             openModal(modalDialogTitle, content);
         }
 
-
         function showDateDetails(year, month, day, events) {
             const monthName = HIRAETH_CONFIG.months[month].name;
             const dayGlobalEpoch = hiraethDateToGlobalEpochDays(year, month, day);
             const dayName = HIRAETH_CONFIG.daysOfWeek[ (dayGlobalEpoch - 1 + HIRAETH_CONFIG.daysOfWeek.length) % HIRAETH_CONFIG.daysOfWeek.length ];
             let modalDialogTitle = `${dayName}, ${day} ${monthName} ${String(year).padStart(4, '0')}`;
             let content = `<p class="text-xl mb-2 text-gray-700 dark:text-gray-300">Luminus Moon: ${HIRAETH_CONFIG.primaryMoon.phases[getLuminusMoonPhase(year, month, day)]}</p>`;
-
             if (events.length > 0) {
                 content += `<h5 class="text-md font-semibold mt-3 mb-1 text-gray-800 dark:text-gray-100">Events on this day:</h5>`;
                 content += '<ul id="modal-event-list" class="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300">';
@@ -609,12 +599,10 @@
             openModal(modalDialogTitle, content);
         }
 
-        // --- SEARCH FUNCTIONALITY ---
         function performSearch(query) {
             const searchTerm = query.toLowerCase().trim();
             const searchResultsDisplay = document.getElementById('search-results-display');
             if (!searchResultsDisplay) return;
-
             if (!searchTerm) {
                 searchResultsDisplay.innerHTML = "<p class='text-gray-700 dark:text-gray-300'>Please enter a search term.</p>";
                 return;
@@ -644,7 +632,6 @@
             searchResultsDisplay.innerHTML = resultsHtml;
         }
 
-        // --- NAVIGATION ---
         function changeMonth(offset) {
             hiraethMonth += offset;
             if (hiraethMonth > HIRAETH_CONFIG.months.length - 1) { hiraethMonth = 0; hiraethYear++; }
@@ -657,26 +644,23 @@
             renderCalendar();
         }
 
-        // --- INITIALIZATION ---
         async function init() {
             if (!appContainer) {
                 console.error("[init] CRITICAL: app-container element NOT FOUND.");
-                document.body.innerHTML = '<p class="p-4 text-red-500 text-center">Critical error: Application container not found. Please check the HTML structure.</p>';
+                document.body.innerHTML = '<p class="p-4 text-red-500 text-center">Critical error: Application container not found.</p>';
                 return;
             }
             console.log("[init] app-container found successfully.");
-
             try {
                 console.log(`[init] Initial state: Year=${hiraethYear}, Month=${hiraethMonth}, Day=${hiraethDay}, ShowMoon=${showMoonPhases}`);
                 setInitialTheme();
-
                 const essentialElements = [
                     prevMonthButton, nextMonthButton, todayButton, loreButton,
-                    settingsButton, searchButton, closeModalButton, eventModal
+                    settingsButton, searchButton, closeModalButton, eventModal, zodiacDisplayEl
                 ];
                 if (essentialElements.some(el => !el)) {
-                    console.error("[init] CRITICAL: One or more essential UI elements are missing. Aborting listener setup.");
-                    if (appContainer) appContainer.innerHTML = '<p class="p-4 text-red-500">Error: Essential UI elements missing. Cannot initialize calendar.</p>';
+                    console.error("[init] CRITICAL: One or more essential UI elements are missing.");
+                    if (appContainer) appContainer.innerHTML = '<p class="p-4 text-red-500">Error: Essential UI elements missing.</p>';
                     return;
                 }
                 console.log("[init] All essential UI elements for listeners appear to be present.");
@@ -700,27 +684,23 @@
                         executeSearchBtn.addEventListener('click', () => performSearch(searchQueryInput.value));
                         searchQueryInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') performSearch(searchQueryInput.value); });
                     } else {
-                        console.warn("[init] Search modal's input or button not found after opening modal.");
+                        console.warn("[init] Search modal's input or button not found.");
                     }
                 });
                 closeModalButton.addEventListener('click', closeModal);
                 eventModal.addEventListener('click', (e) => { if (e.target === eventModal) closeModal(); });
 
-                await loadAllDefinedCalendars();
+                await loadAllDefinedCalendars(); // This will now update `calendarLoadingStatusMessage`
                 console.log(`[init] After loadAllDefinedCalendars. allCalendarsData:`, JSON.parse(JSON.stringify(allCalendarsData)));
-
                 activeCalendars.clear();
                 if (Object.keys(allCalendarsData).length > 0) {
                     console.log(`[init] Defaulting to all loaded calendars active.`);
-                    Object.keys(allCalendarsData).forEach(calName => {
-                        activeCalendars.add(calName);
-                    });
+                    Object.keys(allCalendarsData).forEach(calName => activeCalendars.add(calName));
                 } else {
                     console.log(`[init] No calendars loaded, or no calendars to make active by default.`);
                 }
                 console.log(`[init] Active calendars set to: [${Array.from(activeCalendars).join(', ')}]`);
-
-                renderCalendar();
+                renderCalendar(); // Initial render
                 console.log("[init] Initialization complete.");
             } catch (error) {
                 console.error("[init] CRITICAL ERROR DURING INITIALIZATION:", error);
@@ -729,7 +709,6 @@
                 }
             }
         }
-
         document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
