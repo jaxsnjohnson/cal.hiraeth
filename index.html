@@ -38,8 +38,8 @@
             gap: 1px; /* This gap + the grid background color creates the cell borders */
         }
         .calendar-cell {
-            min-height: 100px; /* Adjust as needed */
-            border: 1px solid transparent;
+            min-height: 120px; /* Adjusted min-height for potentially more content */
+            /* border: 1px solid transparent; */ /* Border provided by grid gap and bg */
         }
         .event-marker {
             width: 8px;
@@ -65,8 +65,6 @@
             max-height: 80vh; /* Limit modal height */
             overflow-y: auto; /* Allow scrolling for tall content */
         }
-        /* Hide navigation class - No longer driven by URL */
-        /* .nav-hidden .navigation-controls { display: none; } */
 
         .weekend-header {
             background-color: #e2e8f0; /* Tailwind's bg-slate-200 */
@@ -165,7 +163,7 @@
                 cycle: 15,
                 shift: 9,
                 granularity: 8,
-                phases: ["🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"] // Corrected '?' to '🌗'
+                phases: ["🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"]
             },
             calendarEpochStart: { year: 1, month: 0, day: 1 }, // Hiraeth year 1, Novnus 1
             loreText: `
@@ -224,9 +222,14 @@
         const closeModalButton = document.getElementById('close-modal');
         const loadingCalendarsMessage = document.getElementById('loading-calendars-message');
 
+
         // --- THEME HANDLING ---
         function setInitialTheme() {
-            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            const storedTheme = localStorage.getItem('hiraethCalendarTheme');
+            if (storedTheme) {
+                document.documentElement.classList.toggle('dark', storedTheme === 'dark');
+                document.documentElement.style.colorScheme = storedTheme;
+            } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
                 document.documentElement.classList.add('dark');
                 document.documentElement.style.colorScheme = 'dark';
             } else {
@@ -234,6 +237,13 @@
                 document.documentElement.style.colorScheme = 'light';
             }
         }
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            const newTheme = isDark ? 'dark' : 'light';
+            document.documentElement.style.colorScheme = newTheme;
+            localStorage.setItem('hiraethCalendarTheme', newTheme);
+        }
+
 
         // --- UTILITY FUNCTIONS ---
         function hiraethDateToGlobalEpochDays(year, monthIndex, dayOfMonth) {
@@ -260,12 +270,13 @@
         function getLuminusMoonPhase(year, month, day) {
             const currentGlobalEpochDay = hiraethDateToGlobalEpochDays(year, month, day);
             const moon = HIRAETH_CONFIG.primaryMoon;
-            const dayForCycleCalc = currentGlobalEpochDay - 1;
+            const dayForCycleCalc = currentGlobalEpochDay -1;
             const dayInCycle = (dayForCycleCalc + moon.shift) % moon.cycle;
             const phaseValue = dayInCycle / moon.cycle;
             const phaseIndex = Math.floor(phaseValue * moon.granularity);
-            return phaseIndex;
+            return phaseIndex < moon.phases.length ? phaseIndex : moon.phases.length -1 ;
         }
+
 
         // --- MODAL HANDLING ---
         function openModal(title, contentHtml, isSettingsModal = false) {
@@ -279,6 +290,7 @@
         function closeModal() {
             if (eventModal) eventModal.classList.add('hidden');
         }
+
 
         // --- EVENT DATA MANAGEMENT & SETTINGS MODAL ---
         function getVisibleEvents() {
@@ -339,7 +351,6 @@
                     if (e.target.checked) activeCalendars.add(calendarName);
                     else activeCalendars.delete(calendarName);
                     renderCalendar();
-                    // updateURL(); // Removed URL handling
                 });
             });
             const moonToggle = modalBody.querySelector('#modal-toggle-moon-phases');
@@ -347,7 +358,6 @@
                 moonToggle.addEventListener('change', (e) => {
                     showMoonPhases = e.target.checked;
                     renderCalendar();
-                    // updateURL(); // Removed URL handling
                 });
             }
         }
@@ -384,24 +394,20 @@
 
         async function loadAllDefinedCalendars() {
             if (loadingCalendarsMessage) loadingCalendarsMessage.classList.remove('hidden');
-
             if (calendarFilesToLoad.length === 0) {
                 if(loadingCalendarsMessage) loadingCalendarsMessage.textContent = "No external calendars defined to load.";
                 console.log("[loadAllDefinedCalendars] No calendar files to load.");
                 return;
             }
-
             console.log("[loadAllDefinedCalendars] Starting to load calendar files:", calendarFilesToLoad);
             const loadPromises = calendarFilesToLoad.map(filePath => loadCalendarFile(filePath));
             const results = await Promise.allSettled(loadPromises);
             let loadedCount = 0;
-
             results.forEach(result => {
                 if (result.status === 'fulfilled' && result.value.status === 'fulfilled') {
                     loadedCount++;
                 }
             });
-
             if (loadingCalendarsMessage) {
                 if (loadedCount > 0) {
                     loadingCalendarsMessage.textContent = `${loadedCount} of ${calendarFilesToLoad.length} external calendars loaded.`;
@@ -412,11 +418,11 @@
             console.log(`[loadAllDefinedCalendars] Finished loading. ${loadedCount} successful.`);
         }
 
+
         // --- CALENDAR RENDERING ---
         function renderCalendar() {
             console.log("[renderCalendar] Attempting to render calendar...");
             try {
-                // Basic state validation
                 if (isNaN(hiraethYear) || isNaN(hiraethMonth) || hiraethMonth < 0 || hiraethMonth >= HIRAETH_CONFIG.months.length || isNaN(hiraethDay)) {
                     console.error(`[renderCalendar] Invalid date state: Year=${hiraethYear}, Month=${hiraethMonth}, Day=${hiraethDay}. Resetting to defaults.`);
                     hiraethYear = 76; hiraethMonth = 2; hiraethDay = 21;
@@ -430,14 +436,12 @@
                     return;
                 }
 
-                // Update header elements
                 if (currentMonthYearEl) currentMonthYearEl.textContent = `${monthData.name}, ${String(hiraethYear).padStart(4, '0')}`;
                 if (currentYearMonthNumericEl) currentYearMonthNumericEl.textContent = `${String(hiraethYear).padStart(4, '0')}-${String(hiraethMonth + 1).padStart(2, '0')}`;
                 if (zodiacDisplayEl) zodiacDisplayEl.innerHTML = `
                     <strong class="text-gray-800 dark:text-gray-100">Zodiac: ${monthData.zodiac}</strong>
                     <p class="text-sm text-gray-600 dark:text-gray-400">${monthData.zodiacInfo}</p>`;
 
-                // Render day headers
                 if (monthGridHeaderEl) {
                     monthGridHeaderEl.innerHTML = '';
                     HIRAETH_CONFIG.daysOfWeek.forEach(dayName => {
@@ -449,12 +453,11 @@
                     });
                 } else { console.error("[renderCalendar] monthGridHeaderEl not found."); }
 
-                // Render day cells
                 if (monthGridDaysEl) {
                     monthGridDaysEl.innerHTML = '';
                     const daysInMonth = getHiraethDaysInMonth(hiraethYear, hiraethMonth);
                     const firstDayGlobalEpoch = hiraethDateToGlobalEpochDays(hiraethYear, hiraethMonth, 1);
-                    const firstDayOfWeek = (firstDayGlobalEpoch - 1 + 7) % 7;
+                    const firstDayOfWeek = (firstDayGlobalEpoch - 1 + HIRAETH_CONFIG.daysOfWeek.length) % HIRAETH_CONFIG.daysOfWeek.length;
 
                     for (let i = 0; i < firstDayOfWeek; i++) {
                         const emptyCell = document.createElement('div');
@@ -463,39 +466,55 @@
                     }
 
                     const currentVisibleEvents = getVisibleEvents();
+
                     for (let day = 1; day <= daysInMonth; day++) {
                         const cell = document.createElement('div');
-                        cell.className = 'calendar-cell p-2 border-transparent cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900 relative bg-white dark:bg-gray-800';
+                        // MODIFICATION: Main cell is p-2, relative, flex flex-col.
+                        cell.className = 'calendar-cell p-2 border-transparent cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900 relative bg-white dark:bg-gray-800 flex flex-col';
+
                         const currentDayGlobalEpoch = hiraethDateToGlobalEpochDays(hiraethYear, hiraethMonth, day);
-                        const dayOfWeekIndex = (currentDayGlobalEpoch - 1 + 7) % 7;
+                        const dayOfWeekIndex = (currentDayGlobalEpoch - 1 + HIRAETH_CONFIG.daysOfWeek.length) % HIRAETH_CONFIG.daysOfWeek.length;
                         if (HIRAETH_CONFIG.weekendDays.includes(HIRAETH_CONFIG.daysOfWeek[dayOfWeekIndex])) {
                             cell.classList.add('weekend-day-cell');
                             cell.classList.remove('bg-white', 'dark:bg-gray-800');
                         }
 
+                        // MODIFICATION: Top row container for day number and moon phase
+                        const topRowContainer = document.createElement('div');
+                        topRowContainer.className = 'flex justify-between items-start w-full mb-1'; // mb-1 for spacing
+
                         const dayNumberEl = document.createElement('span');
                         dayNumberEl.className = 'text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100';
                         dayNumberEl.textContent = day;
-                        cell.appendChild(dayNumberEl);
+                        topRowContainer.appendChild(dayNumberEl);
 
                         if (showMoonPhases) {
                             const moonPhaseIndex = getLuminusMoonPhase(hiraethYear, hiraethMonth, day);
                             const moonEmoji = HIRAETH_CONFIG.primaryMoon.phases[moonPhaseIndex];
                             const moonPhaseEl = document.createElement('div');
-                            moonPhaseEl.className = 'text-lg mt-1 hidden sm:block text-gray-700 dark:text-gray-300';
+                            moonPhaseEl.className = 'text-lg text-gray-700 dark:text-gray-300 hidden sm:block'; // No longer centered by itself, alignment handled by flex parent
                             moonPhaseEl.textContent = moonEmoji;
-                            cell.appendChild(moonPhaseEl);
+                            topRowContainer.appendChild(moonPhaseEl);
+                        } else {
+                            // Add a placeholder if moon phases are off to maintain layout consistency with justify-between
+                            const moonPlaceholder = document.createElement('div');
+                            moonPlaceholder.className = 'w-6 h-6'; // Approx size of moon emoji
+                            topRowContainer.appendChild(moonPlaceholder);
                         }
+                        cell.appendChild(topRowContainer);
+
 
                         const dateString = `${String(hiraethYear).padStart(4, '0')}-${String(hiraethMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                         const dayEvents = currentVisibleEvents.filter(event => event.date === dateString);
 
                         if (dayEvents.length > 0) {
                             const eventsContainer = document.createElement('div');
-                            eventsContainer.className = 'mt-1 space-y-1 absolute bottom-1 left-1 right-1 px-1 max-h-[calc(100%-40px)] overflow-y-auto';
+                            // MODIFICATION: Adjusted max-h, removed items-center as events are full width
+                            eventsContainer.className = 'w-full space-y-1 px-1 max-h-[calc(100%-2.5rem)] overflow-y-auto'; // 2.5rem approx height of topRow + margin
+
                             dayEvents.slice(0, 2).forEach(event => {
                                 const eventMarker = document.createElement('div');
-                                eventMarker.className = 'flex items-center text-xs p-1 bg-green-200 dark:bg-green-700 text-green-800 dark:text-green-100 rounded truncate';
+                                eventMarker.className = 'flex items-center text-xs p-1 bg-green-200 dark:bg-green-700 text-green-800 dark:text-green-100 rounded truncate cursor-pointer hover:bg-green-300 dark:hover:bg-green-600';
                                 const markerDot = document.createElement('span');
                                 markerDot.className = 'event-marker bg-green-500 dark:bg-green-400';
                                 eventMarker.appendChild(markerDot);
@@ -503,17 +522,32 @@
                                 eventTitle.className = 'truncate';
                                 eventTitle.textContent = event.title;
                                 eventMarker.appendChild(eventTitle);
+
+                                // MODIFICATION: Click listener for individual event
+                                eventMarker.addEventListener('click', (e) => {
+                                    e.stopPropagation(); // Prevent cell click
+                                    showSingleEventDetails(event, hiraethYear, hiraethMonth, day);
+                                });
                                 eventsContainer.appendChild(eventMarker);
                             });
                             if (dayEvents.length > 2) {
                                 const moreEventsEl = document.createElement('div');
-                                moreEventsEl.className = 'text-xs text-blue-600 dark:text-blue-400 text-center font-medium';
+                                moreEventsEl.className = 'text-xs text-blue-600 dark:text-blue-400 text-center font-medium cursor-pointer hover:underline';
                                 moreEventsEl.textContent = `+${dayEvents.length - 2} more`;
+                                // MODIFICATION: Click listener for "more events"
+                                moreEventsEl.addEventListener('click', (e) => {
+                                    e.stopPropagation(); // Prevent cell click
+                                    showDateDetails(hiraethYear, hiraethMonth, day, dayEvents);
+                                });
                                 eventsContainer.appendChild(moreEventsEl);
                             }
                             cell.appendChild(eventsContainer);
                         }
-                        cell.addEventListener('click', () => showDateDetails(hiraethYear, hiraethMonth, day, dayEvents));
+                        // MODIFICATION: Cell click listener (for areas not covered by specific event markers)
+                        cell.addEventListener('click', () => {
+                            // This will trigger if the click is not on an event marker or "more events" link due to stopPropagation
+                            showDateDetails(hiraethYear, hiraethMonth, day, dayEvents);
+                        });
                         monthGridDaysEl.appendChild(cell);
                     }
                 } else { console.error("[renderCalendar] monthGridDaysEl not found."); }
@@ -526,15 +560,39 @@
             }
         }
 
+        // MODIFICATION: New function to show details for a single event
+        function showSingleEventDetails(eventObj, year, month, day) {
+            const monthName = HIRAETH_CONFIG.months[month].name;
+            const dayGlobalEpoch = hiraethDateToGlobalEpochDays(year, month, day);
+            const dayName = HIRAETH_CONFIG.daysOfWeek[ (dayGlobalEpoch - 1 + HIRAETH_CONFIG.daysOfWeek.length) % HIRAETH_CONFIG.daysOfWeek.length ];
+
+            let modalDialogTitle = `Event: ${eventObj.title}`;
+            let content = `<p class="text-md mb-1 text-gray-600 dark:text-gray-400">On: ${dayName}, ${day} ${monthName} ${String(year).padStart(4, '0')}</p>`;
+            content += `<p class="text-lg mb-2 text-gray-700 dark:text-gray-300">Luminus Moon: ${HIRAETH_CONFIG.primaryMoon.phases[getLuminusMoonPhase(year, month, day)]}</p>`;
+
+            content += `<h5 class="text-md font-semibold mt-3 mb-1 text-gray-800 dark:text-gray-100">Details:</h5>`;
+            content += '<ul id="modal-event-list" class="list-none space-y-1 text-gray-700 dark:text-gray-300">'; // Changed to list-none for single event
+            content += `
+                <li>
+                    <strong class="text-gray-800 dark:text-gray-200 text-xl">${eventObj.title}</strong>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Original Date: ${eventObj.date}</p>
+                    <p class="text-sm mt-1">${eventObj.description || 'No description.'}</p>
+                    ${eventObj.group ? `<p class="text-sm mt-1"><em>(Group: ${eventObj.group})</em></p>` : ''}
+                </li>`;
+            content += '</ul>';
+            openModal(modalDialogTitle, content);
+        }
+
+
         function showDateDetails(year, month, day, events) {
             const monthName = HIRAETH_CONFIG.months[month].name;
             const dayGlobalEpoch = hiraethDateToGlobalEpochDays(year, month, day);
-            const dayName = HIRAETH_CONFIG.daysOfWeek[ (dayGlobalEpoch - 1 + 7) % 7 ];
+            const dayName = HIRAETH_CONFIG.daysOfWeek[ (dayGlobalEpoch - 1 + HIRAETH_CONFIG.daysOfWeek.length) % HIRAETH_CONFIG.daysOfWeek.length ];
             let modalDialogTitle = `${dayName}, ${day} ${monthName} ${String(year).padStart(4, '0')}`;
             let content = `<p class="text-xl mb-2 text-gray-700 dark:text-gray-300">Luminus Moon: ${HIRAETH_CONFIG.primaryMoon.phases[getLuminusMoonPhase(year, month, day)]}</p>`;
 
             if (events.length > 0) {
-                content += `<h5 class="text-md font-semibold mt-3 mb-1 text-gray-800 dark:text-gray-100">Events:</h5>`;
+                content += `<h5 class="text-md font-semibold mt-3 mb-1 text-gray-800 dark:text-gray-100">Events on this day:</h5>`;
                 content += '<ul id="modal-event-list" class="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300">';
                 events.forEach(event => {
                     content += `
@@ -556,6 +614,7 @@
             const searchTerm = query.toLowerCase().trim();
             const searchResultsDisplay = document.getElementById('search-results-display');
             if (!searchResultsDisplay) return;
+
             if (!searchTerm) {
                 searchResultsDisplay.innerHTML = "<p class='text-gray-700 dark:text-gray-300'>Please enter a search term.</p>";
                 return;
@@ -588,27 +647,21 @@
         // --- NAVIGATION ---
         function changeMonth(offset) {
             hiraethMonth += offset;
-            if (hiraethMonth > 11) { hiraethMonth = 0; hiraethYear++; }
-            else if (hiraethMonth < 0) { hiraethMonth = 11; hiraethYear--; }
-            hiraethDay = 1; // Reset day to 1 when changing month
-            // updateURL(); // Removed URL handling
+            if (hiraethMonth > HIRAETH_CONFIG.months.length - 1) { hiraethMonth = 0; hiraethYear++; }
+            else if (hiraethMonth < 0) { hiraethMonth = HIRAETH_CONFIG.months.length - 1; hiraethYear--; }
+            hiraethDay = 1;
             renderCalendar();
         }
         function goToToday() {
-            // Reset to the game's "current date"
             hiraethYear = 76; hiraethMonth = 2; hiraethDay = 21;
-            // updateURL(); // Removed URL handling
             renderCalendar();
         }
-
-        // --- URL PARAMETER HANDLING (REMOVED) ---
-        // getUrlParams, updateURL, applyUrlParams functions are removed.
 
         // --- INITIALIZATION ---
         async function init() {
             if (!appContainer) {
                 console.error("[init] CRITICAL: app-container element NOT FOUND.");
-                alert("Critical error: App container not found. Page cannot load.");
+                document.body.innerHTML = '<p class="p-4 text-red-500 text-center">Critical error: Application container not found. Please check the HTML structure.</p>';
                 return;
             }
             console.log("[init] app-container found successfully.");
@@ -616,16 +669,14 @@
             try {
                 console.log(`[init] Initial state: Year=${hiraethYear}, Month=${hiraethMonth}, Day=${hiraethDay}, ShowMoon=${showMoonPhases}`);
                 setInitialTheme();
-                // No applyUrlParams() call
 
-                // Check for essential UI elements before adding listeners
                 const essentialElements = [
                     prevMonthButton, nextMonthButton, todayButton, loreButton,
                     settingsButton, searchButton, closeModalButton, eventModal
                 ];
                 if (essentialElements.some(el => !el)) {
                     console.error("[init] CRITICAL: One or more essential UI elements are missing. Aborting listener setup.");
-                    if (appContainer) appContainer.innerHTML = '<p class="p-4 text-red-500">Error: Essential UI elements missing.</p>';
+                    if (appContainer) appContainer.innerHTML = '<p class="p-4 text-red-500">Error: Essential UI elements missing. Cannot initialize calendar.</p>';
                     return;
                 }
                 console.log("[init] All essential UI elements for listeners appear to be present.");
@@ -649,7 +700,7 @@
                         executeSearchBtn.addEventListener('click', () => performSearch(searchQueryInput.value));
                         searchQueryInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') performSearch(searchQueryInput.value); });
                     } else {
-                        console.warn("[init] Search modal's input or button not found.");
+                        console.warn("[init] Search modal's input or button not found after opening modal.");
                     }
                 });
                 closeModalButton.addEventListener('click', closeModal);
@@ -658,10 +709,9 @@
                 await loadAllDefinedCalendars();
                 console.log(`[init] After loadAllDefinedCalendars. allCalendarsData:`, JSON.parse(JSON.stringify(allCalendarsData)));
 
-                // Default to all loaded calendars being active since URL handling is removed
                 activeCalendars.clear();
                 if (Object.keys(allCalendarsData).length > 0) {
-                    console.log(`[init] Defaulting to all loaded calendars active (URL handling removed).`);
+                    console.log(`[init] Defaulting to all loaded calendars active.`);
                     Object.keys(allCalendarsData).forEach(calName => {
                         activeCalendars.add(calName);
                     });
@@ -671,7 +721,6 @@
                 console.log(`[init] Active calendars set to: [${Array.from(activeCalendars).join(', ')}]`);
 
                 renderCalendar();
-                // No updateURL() call
                 console.log("[init] Initialization complete.");
             } catch (error) {
                 console.error("[init] CRITICAL ERROR DURING INITIALIZATION:", error);
