@@ -1,0 +1,37 @@
+[
+    {
+      "date": "0076-03-15",
+      "title": "Festival of Awakening",
+      "description": "A grand celebration marking the first full moon of Concis in Year 76. Traditional dances and offerings to The Phoenix are common.",
+      "group": "Celestial",
+      "id": "evt_001"
+    },
+    {
+      "date": "0076-03-21",
+      "title": "Day of Hiraeth Reckoning",
+      "description": "The designated 'current day' for this calendar version. A day for reflection and planning.",
+      "group": "Special",
+      "id": "evt_002"
+    },
+    {
+      "date": "0076-03-30",
+      "title": "Concis Full Moon Vigil",
+      "description": "A solemn vigil held on the last day of Concis, under the light of the full moon Luminus, preparing for the transition to Rifis.",
+      "group": "Ritual",
+      "id": "evt_003"
+    },
+    {
+      "date": "0076-04-10",
+      "title": "Rifis Frog Leap Contest",
+      "description": "A playful contest held in early Rifis, celebrating the season's namesake zodiac. Participants often engage in transmutation challenges.",
+      "group": "Cultural",
+      "id": "evt_004"
+    },
+    {
+      "date": "0076-01-01",
+      "title": "Year 76 Commencement",
+      "description": "The official start of Year 76 in Hiraeth.",
+      "group": "Historical",
+      "id": "evt_005"
+    }
+  ]

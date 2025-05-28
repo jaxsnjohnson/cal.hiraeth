@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hiraeth Calendar Event Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        .dark ::-webkit-scrollbar-track {
+            background: #2d3748; /* dark:bg-gray-700 */
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #718096; /* dark:bg-gray-500 */
+        }
+        .dark ::-webkit-scrollbar-thumb:hover {
+            background: #a0aec0; /* dark:bg-gray-400 */
+        }
+        .input-label {
+            @apply block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1;
+        }
+        .input-field {
+            @apply mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm;
+        }
+        .input-field-short { /* For YYYY, MM, DD inputs */
+            @apply mt-1 block w-20 px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm;
+        }
+        .btn {
+            @apply px-4 py-2 rounded-md shadow-sm text-sm font-medium transition-colors duration-150;
+        }
+        .btn-primary {
+            @apply bg-blue-600 hover:bg-blue-700 text-white;
+        }
+        .btn-secondary {
+            @apply bg-gray-200 hover:bg-gray-300 text-gray-700 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-gray-200;
+        }
+        .btn-danger {
+            @apply bg-red-600 hover:bg-red-700 text-white;
+        }
+        .section-title {
+            @apply text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4 pb-2 border-b border-gray-300 dark:border-gray-600;
+        }
+        .card {
+            @apply bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6;
+        }
+        .modal-backdrop { 
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100; 
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+        }
+        .modal-backdrop.active {
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0.3s ease;
+        }
+        .modal-content-json {
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+        }
+        .modal-backdrop.active .modal-content-json {
+            transform: scale(1);
+        }
+        #notification-area {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+            width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .notification {
+            @apply p-4 rounded-md shadow-lg text-sm font-medium relative;
+            opacity: 0;
+            transform: translateX(100%);
+            animation: slideIn 0.5s forwards, fadeOut 0.5s 4.5s forwards;
+        }
+        .notification-success { @apply bg-green-500 text-white; }
+        .notification-error { @apply bg-red-500 text-white; }
+        .notification-info { @apply bg-blue-500 text-white; }
+        .notification-close {
+            @apply absolute top-1 right-2 text-lg font-bold leading-none cursor-pointer;
+        }
+        @keyframes slideIn {
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes fadeOut {
+            to { opacity: 0; transform: translateX(100%); height: 0; padding-top:0; padding-bottom:0; margin-bottom:0; border:0;}
+        }
+        .event-list-item-selected {
+            @apply ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/50;
+        }
+    </style>
+</head>
+<body class="font-sans antialiased bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300 ease-in-out">
+
+    <div id="notification-area"></div>
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-center text-gray-800 dark:text-gray-200">Hiraeth Calendar - Event Editor</h1>
+            <div class="flex justify-center mt-2">
+                <button id="theme-toggle-editor" class="btn btn-secondary" title="Toggle light/dark theme">Toggle Theme</button>
+            </div>
+        </header>
+
+        <section id="event-file-management" class="card">
+            <h2 class="section-title">Event File Management</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                <div>
+                    <label for="loadEventsFile" class="input-label">Load Events (JSON Array):</label>
+                    <input type="file" id="loadEventsFile" accept=".json" class="input-field file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-gray-600 dark:file:text-gray-200 dark:hover:file:bg-gray-500" title="Load an events list from a JSON file">
+                    <div class="mt-1">
+                        <input type="checkbox" id="appendEventsCheckbox" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:focus:ring-blue-600">
+                        <label for="appendEventsCheckbox" class="ml-2 text-sm text-gray-700 dark:text-gray-300">Append to existing events</label>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-2 md:justify-end">
+                     <button id="generateEventsJsonBtn" class="btn btn-primary" title="Generate JSON output for current events">Generate Events JSON</button>
+                     <button id="clearAllEventsBtn" class="btn btn-danger" title="Remove all events from the current list">Clear All Events</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="event-management-section" class="card">
+            <h2 class="section-title">Event Management</h2>
+            <div class="mb-6">
+                <h3 class="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">Add/Edit Event</h3>
+                <form id="eventForm" class="space-y-4 p-4 border border-gray-200 dark:border-gray-700 rounded-md">
+                    <input type="hidden" id="eventId" name="eventId">
+                    <div>
+                        <label class="input-label">Date: <span class="text-red-500">*</span></label>
+                        <div class="flex space-x-2 items-center">
+                            <input type="number" id="eventYear" name="eventYear" class="input-field-short" placeholder="YYYY" required title="Year (e.g., 0076)">
+                            <span class="text-gray-500 dark:text-gray-400">-</span>
+                            <input type="number" id="eventMonth" name="eventMonth" class="input-field-short" placeholder="MM" min="1" max="12" required title="Month (1-12)">
+                            <span class="text-gray-500 dark:text-gray-400">-</span>
+                            <input type="number" id="eventDay" name="eventDay" class="input-field-short" placeholder="DD" min="1" max="30" required title="Day (1-30, as all Hiraeth months have 30 days)">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="eventTitle" class="input-label">Title: <span class="text-red-500">*</span></label>
+                        <input type="text" id="eventTitle" name="eventTitle" class="input-field" required title="Event title (required)">
+                    </div>
+                    <div>
+                        <label for="eventDescription" class="input-label">Description:</label>
+                        <textarea id="eventDescription" name="eventDescription" rows="3" class="input-field" title="Event description"></textarea>
+                    </div>
+                    <div>
+                        <label for="eventGroup" class="input-label">Group/Category:</label>
+                        <input type="text" id="eventGroup" name="eventGroup" list="eventGroupsDatalist" class="input-field" placeholder="Cultural, Celestial, etc." title="Event group or category (optional)">
+                        <datalist id="eventGroupsDatalist"></datalist>
+                    </div>
+                    <button type="submit" id="saveEventBtn" class="btn btn-primary" title="Save new event or update existing">Save Event</button>
+                    <button type="button" id="clearEventFormBtn" class="btn btn-secondary" title="Clear the event form fields">Clear Form</button>
+                </form>
+            </div>
+
+            <div>
+                <h3 class="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">Current Events (<span id="eventCount">0</span>)</h3>
+                <div class="mb-2">
+                    <input type="text" id="eventSearchInput" class="input-field mb-2" placeholder="Search events by title, date, or description..." title="Filter the event list">
+                </div>
+                <ul id="eventList" class="space-y-2 max-h-96 overflow-y-auto p-2 border border-gray-200 dark:border-gray-700 rounded-md">
+                    <li class="text-gray-500 dark:text-gray-400 initial-message">No events loaded or created yet.</li>
+                </ul>
+            </div>
+        </section>
+    </div>
+    
+    <div id="jsonDisplayModal" class="modal-backdrop">
+        <div class="modal-content-json bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-11/12 md:w-2/3 lg:w-1/2">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-2xl font-semibold text-gray-800 dark:text-gray-200">Events JSON Output</h3>
+                <button id="closeJsonModalBtn" class="text-gray-600 dark:text-gray-400 hover:text-red-500 text-2xl" title="Close this modal">&times;</button>
+            </div>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Copy the JSON array below. You can then paste this into the <code>eventsData</code> variable in your main Hiraeth calendar HTML file.</p>
+            <textarea id="jsonOutputTextarea" readonly class="w-full h-64 p-2 border rounded-md bg-gray-50 dark:bg-gray-700 dark:border-gray-600 font-mono text-sm text-gray-800 dark:text-gray-200"></textarea>
+            <div class="mt-4 flex flex-wrap gap-2 justify-end">
+                <button id="copyJsonBtn" class="btn btn-primary" title="Copy JSON to clipboard">Copy to Clipboard</button>
+                <button id="downloadJsonBtn" class="btn btn-secondary" title="Download events as a .json file">Download .json File</button>
+                <button id="closeJsonModalBtnInner" class="btn btn-secondary" title="Close this modal">Close</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // --- THEME HANDLING ---
+        (function() { 
+            try {
+                const storedTheme = localStorage.getItem('hiraethEditorTheme');
+                if (storedTheme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                    document.documentElement.style.colorScheme = 'dark';
+                } else { 
+                    document.documentElement.classList.remove('dark');
+                    document.documentElement.style.colorScheme = 'light';
+                }
+            } catch (e) {
+                console.error("Could not apply stored editor theme:", e);
+                document.documentElement.style.colorScheme = 'light';
+            }
+        })();
+
+        function applyEditorTheme(theme) {
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+                document.documentElement.style.colorScheme = 'dark';
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.style.colorScheme = 'light';
+            }
+            try {
+                localStorage.setItem('hiraethEditorTheme', theme);
+            } catch (e) {
+                console.error("Could not save editor theme to localStorage:", e);
+            }
+        }
+
+        function toggleEditorTheme() {
+            const newTheme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+            applyEditorTheme(newTheme);
+        }
+        
+        // --- NOTIFICATION SYSTEM ---
+        const notificationArea = document.getElementById('notification-area');
+        function showNotification(message, type = 'info', duration = 5000) {
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.textContent = message;
+            
+            const closeButton = document.createElement('span');
+            closeButton.className = 'notification-close';
+            closeButton.innerHTML = '&times;';
+            closeButton.onclick = () => notification.remove();
+            notification.appendChild(closeButton);
+
+            notificationArea.appendChild(notification);
+
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, duration);
+        }
+
+        // --- GLOBAL EVENT DATA ---
+        let currentEventsData = []; 
+        let currentlyEditingId = null; 
+
+        // --- DOM Elements ---
+        const themeToggleEditorBtn = document.getElementById('theme-toggle-editor');
+        const loadEventsFileIn = document.getElementById('loadEventsFile');
+        const appendEventsCheckbox = document.getElementById('appendEventsCheckbox');
+        const generateEventsJsonBtn = document.getElementById('generateEventsJsonBtn');
+        const clearAllEventsBtn = document.getElementById('clearAllEventsBtn');
+        
+        const eventForm = document.getElementById('eventForm');
+        const eventIdIn = document.getElementById('eventId');
+        // Date input fields
+        const eventYearIn = document.getElementById('eventYear');
+        const eventMonthIn = document.getElementById('eventMonth');
+        const eventDayIn = document.getElementById('eventDay');
+
+        const eventTitleIn = document.getElementById('eventTitle');
+        const eventDescriptionIn = document.getElementById('eventDescription');
+        const eventGroupIn = document.getElementById('eventGroup');
+        const eventGroupsDatalist = document.getElementById('eventGroupsDatalist');
+        const saveEventBtn = document.getElementById('saveEventBtn'); 
+        const clearEventFormBtn = document.getElementById('clearEventFormBtn');
+        const eventListUl = document.getElementById('eventList');
+        const eventSearchInput = document.getElementById('eventSearchInput');
+        const eventCountSpan = document.getElementById('eventCount');
+
+        const jsonDisplayModal = document.getElementById('jsonDisplayModal');
+        const jsonOutputTextarea = document.getElementById('jsonOutputTextarea');
+        const closeJsonModalBtn = document.getElementById('closeJsonModalBtn');
+        const closeJsonModalBtnInner = document.getElementById('closeJsonModalBtnInner');
+        const copyJsonBtn = document.getElementById('copyJsonBtn');
+        const downloadJsonBtn = document.getElementById('downloadJsonBtn');
+
+
+        // --- UI RENDERING FUNCTIONS ---
+        function updateEventGroupsDatalist() {
+            const uniqueGroups = [...new Set(currentEventsData.map(event => event.group).filter(group => group))];
+            eventGroupsDatalist.innerHTML = '';
+            uniqueGroups.forEach(group => {
+                const option = document.createElement('option');
+                option.value = group;
+                eventGroupsDatalist.appendChild(option);
+            });
+        }
+
+        function renderEventList(searchTerm = '') {
+            eventListUl.innerHTML = ''; 
+            const searchTermLower = searchTerm.toLowerCase();
+            const filteredEvents = currentEventsData.filter(event => {
+                return (event.title?.toLowerCase().includes(searchTermLower) ||
+                        event.date?.toLowerCase().includes(searchTermLower) ||
+                        event.description?.toLowerCase().includes(searchTermLower) ||
+                        event.group?.toLowerCase().includes(searchTermLower));
+            });
+            
+            eventCountSpan.textContent = filteredEvents.length;
+
+            if (filteredEvents.length === 0) {
+                eventListUl.innerHTML = `<li class="text-gray-500 dark:text-gray-400 p-2">${searchTerm ? 'No events match your search.' : 'No events. Add some or load an events file.'}</li>`;
+                return;
+            }
+            
+            const sortedEvents = [...filteredEvents].sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
+
+            sortedEvents.forEach(event => {
+                const li = document.createElement('li');
+                li.className = 'p-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-start gap-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150';
+                if (String(event.id) === String(currentlyEditingId)) { // Compare as strings for safety
+                    li.classList.add('event-list-item-selected');
+                }
+                li.innerHTML = `
+                    <div class="flex-grow min-w-0"> 
+                        <div class="flex items-center">
+                            <span class="font-semibold text-blue-600 dark:text-blue-400">${event.date || 'N/A'}:</span>
+                            <span class="ml-2 font-medium text-gray-800 dark:text-gray-200 truncate" title="${event.title}">${event.title || 'No Title'}</span>
+                        </div>
+                        ${event.group ? `<span class="mt-1 text-xs bg-indigo-100 dark:bg-indigo-800 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded-full inline-block">${event.group}</span>` : ''}
+                        ${event.description ? `<p class="mt-1 text-sm text-gray-600 dark:text-gray-400 break-words whitespace-pre-wrap">${event.description.substring(0,100)}${event.description.length > 100 ? '...' : ''}</p>` : ''}
+                    </div>
+                    <div class="flex-shrink-0 ml-2 flex flex-col sm:flex-row gap-1 items-end">
+                        <button class="btn btn-secondary btn-sm editEventBtn" data-id="${event.id}" title="Edit this event">Edit</button>
+                        <button class="btn btn-danger btn-sm removeEventBtn" data-id="${event.id}" title="Delete this event">Del</button>
+                    </div>
+                `;
+                eventListUl.appendChild(li);
+            });
+
+            eventListUl.querySelectorAll('.editEventBtn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const eventId = e.target.dataset.id; 
+                    const eventToEdit = currentEventsData.find(ev => String(ev.id) === String(eventId)); 
+                    if (eventToEdit) {
+                        eventIdIn.value = eventToEdit.id;
+                        // Parse YYYY-MM-DD date string
+                        const dateParts = eventToEdit.date.split('-');
+                        if (dateParts.length === 3) {
+                            eventYearIn.value = dateParts[0];
+                            eventMonthIn.value = dateParts[1];
+                            eventDayIn.value = dateParts[2];
+                        } else { // Fallback if date format is unexpected
+                            eventYearIn.value = '';
+                            eventMonthIn.value = '';
+                            eventDayIn.value = '';
+                        }
+                        eventTitleIn.value = eventToEdit.title;
+                        eventDescriptionIn.value = eventToEdit.description || '';
+                        eventGroupIn.value = eventToEdit.group || '';
+                        currentlyEditingId = eventToEdit.id;
+                        renderEventList(eventSearchInput.value); 
+                        eventYearIn.focus(); 
+                        showNotification(`Editing event: ${eventToEdit.title}`, 'info', 3000);
+                    }
+                });
+            });
+            eventListUl.querySelectorAll('.removeEventBtn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    if (confirm("Are you sure you want to delete this event?")) {
+                        const eventId = e.target.dataset.id;
+                        currentEventsData = currentEventsData.filter(ev => String(ev.id) !== String(eventId));
+                        if(String(currentlyEditingId) === String(eventId)) { 
+                            eventForm.reset();
+                            eventIdIn.value = '';
+                            currentlyEditingId = null;
+                        }
+                        renderEventList(eventSearchInput.value);
+                        updateEventGroupsDatalist();
+                        showNotification("Event deleted.", 'info');
+                    }
+                });
+            });
+        }
+
+        function displayJsonModal(jsonString) {
+            jsonOutputTextarea.value = jsonString;
+            jsonDisplayModal.classList.add('active');
+        }
+        function closeJsonModal() {
+            jsonDisplayModal.classList.remove('active');
+        }
+        
+        // --- EVENT HANDLERS ---
+        themeToggleEditorBtn.addEventListener('click', toggleEditorTheme);
+
+        clearAllEventsBtn.addEventListener('click', () => {
+            if (currentEventsData.length === 0) {
+                showNotification("Event list is already empty.", "info");
+                return;
+            }
+            if (confirm("Are you sure you want to clear all current events? This action cannot be undone.")) {
+                currentEventsData = [];
+                renderEventList();
+                updateEventGroupsDatalist();
+                eventForm.reset(); 
+                eventIdIn.value = '';
+                currentlyEditingId = null;
+                showNotification("All events have been cleared.", "success");
+            }
+        });
+        
+        eventForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const idValue = eventIdIn.value;
+            const id = (idValue) ? idValue : String(Date.now()) + Math.random().toString(36).substr(2, 9);
+            
+            // Construct date from YYYY, MM, DD inputs
+            const year = String(eventYearIn.value).padStart(4, '0');
+            const month = String(eventMonthIn.value).padStart(2, '0');
+            const day = String(eventDayIn.value).padStart(2, '0');
+            const eventDateString = `${year}-${month}-${day}`;
+
+            const newEvent = {
+                id: id, 
+                date: eventDateString,
+                title: eventTitleIn.value.trim(),
+                description: eventDescriptionIn.value.trim(),
+                group: eventGroupIn.value.trim()
+            };
+
+            if (!eventYearIn.value || !eventMonthIn.value || !eventDayIn.value || !newEvent.title) {
+                showNotification("Year, Month, Day, and Title are required.", "error");
+                return;
+            }
+            if (parseInt(month) < 1 || parseInt(month) > 12 || parseInt(day) < 1 || parseInt(day) > 30) {
+                 showNotification("Invalid month (1-12) or day (1-30).", "error");
+                return;
+            }
+
+
+            const existingEventIndex = currentEventsData.findIndex(ev => String(ev.id) === String(id));
+            if (existingEventIndex > -1) {
+                currentEventsData[existingEventIndex] = newEvent; 
+                showNotification(`Event "${newEvent.title}" updated.`, "success");
+            } else {
+                currentEventsData.push(newEvent); 
+                showNotification(`Event "${newEvent.title}" added.`, "success");
+            }
+            renderEventList(eventSearchInput.value);
+            updateEventGroupsDatalist();
+            eventForm.reset();
+            eventIdIn.value = ''; 
+            currentlyEditingId = null; 
+            renderEventList(eventSearchInput.value); 
+        });
+
+        clearEventFormBtn.addEventListener('click', () => {
+            eventForm.reset();
+            eventIdIn.value = '';
+            currentlyEditingId = null;
+            renderEventList(eventSearchInput.value); 
+        });
+
+        loadEventsFileIn.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            const append = appendEventsCheckbox.checked;
+            if (file) {
+                showNotification("Loading file...", "info", 2000);
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const loadedEventsArray = JSON.parse(e.target.result);
+                        if (Array.isArray(loadedEventsArray)) { 
+                            const isValidStructure = loadedEventsArray.every(item => typeof item.date === 'string' && typeof item.title === 'string');
+                            if (isValidStructure) {
+                                const newEventsWithIds = loadedEventsArray.map(ev => ({...ev, id: ev.id || String(Date.now()) + Math.random().toString(36).substr(2,9) }));
+                                if (append) {
+                                    currentEventsData = currentEventsData.concat(newEventsWithIds);
+                                } else {
+                                    currentEventsData = newEventsWithIds;
+                                }
+                                renderEventList();
+                                updateEventGroupsDatalist();
+                                showNotification(`Events JSON ${append ? 'appended' : 'loaded'} successfully!`, "success");
+                            } else {
+                                showNotification("Loaded JSON array contains items with invalid event structure.", "error");
+                            }
+                        } else {
+                            showNotification("Invalid JSON file. Expected an array of event objects.", "error");
+                        }
+                    } catch (error) {
+                        showNotification("Error parsing JSON file: " + error.message, "error");
+                    }
+                    loadEventsFileIn.value = null; 
+                };
+                reader.onerror = () => {
+                    showNotification("Error reading file.", "error");
+                    loadEventsFileIn.value = null; 
+                }
+                reader.readAsText(file);
+            }
+        });
+
+        generateEventsJsonBtn.addEventListener('click', () => {
+            if (currentEventsData.length === 0) {
+                showNotification("No events to generate JSON for.", "info");
+                return;
+            }
+            const eventsToOutput = currentEventsData.map(event => {
+                return { date: event.date, title: event.title, description: event.description, group: event.group, id: event.id };
+            });
+            const eventsJsonString = JSON.stringify(eventsToOutput, null, 2);
+            displayJsonModal(eventsJsonString); 
+        });
+
+        closeJsonModalBtn.addEventListener('click', closeJsonModal);
+        closeJsonModalBtnInner.addEventListener('click', closeJsonModal);
+        jsonDisplayModal.addEventListener('click', (e) => { 
+            if (e.target === jsonDisplayModal) closeJsonModal();
+        });
+
+        copyJsonBtn.addEventListener('click', () => {
+            jsonOutputTextarea.select();
+            jsonOutputTextarea.setSelectionRange(0, 99999); 
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showNotification("Events JSON copied to clipboard!", "success");
+                } else { throw new Error('document.execCommand failed'); }
+            } catch (err) {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(jsonOutputTextarea.value).then(() => {
+                        showNotification("Events JSON copied (modern API)!", "success");
+                    }).catch(clipErr => {
+                        showNotification("Could not copy. Please copy manually.", "error");
+                        console.error('navigator.clipboard.writeText failed:', clipErr);
+                    });
+                } else {
+                    showNotification("Could not copy. Please copy manually.", "error");
+                    console.error('Copy to clipboard failed:', err);
+                }
+            }
+        });
+        
+        downloadJsonBtn.addEventListener('click', () => {
+            const jsonData = jsonOutputTextarea.value;
+            const blob = new Blob([jsonData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `hiraeth_events_${new Date().toISOString().slice(0,10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showNotification("Events JSON download initiated.", "success");
+        });
+
+        eventSearchInput.addEventListener('input', (e) => {
+            renderEventList(e.target.value);
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderEventList(); 
+            updateEventGroupsDatalist();
+            showNotification("Event Editor Initialized.", "info", 3000);
+        });
+
+    </script>
+</body>
+</html>
