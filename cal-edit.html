@@ -274,8 +274,12 @@
         }
 
         // --- GLOBAL EVENT DATA ---
-        let currentEventsData = []; 
-        let currentlyEditingId = null; 
+        let currentEventsData = [];
+        let currentlyEditingId = null;
+        // New globals to store calendar metadata
+        let currentCalendarDisplayName = null;
+        let currentColorTheme = null;
+        let loadedFileHadMetadata = false; // Flag to know if the loaded file was in the new format
 
         // --- DOM Elements ---
         const themeToggleEditorBtn = document.getElementById('theme-toggle-editor');
@@ -425,12 +429,15 @@
             }
             if (confirm("Are you sure you want to clear all current events? This action cannot be undone.")) {
                 currentEventsData = [];
+                currentCalendarDisplayName = null;
+                currentColorTheme = null;
+                loadedFileHadMetadata = false;
                 renderEventList();
                 updateEventGroupsDatalist();
                 eventForm.reset(); 
                 eventIdIn.value = '';
                 currentlyEditingId = null;
-                showNotification("All events have been cleared.", "success");
+                showNotification("All events and calendar context have been cleared.", "success");
             }
         });
         
@@ -494,48 +501,106 @@
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     try {
-                        const loadedEventsArray = JSON.parse(e.target.result);
-                        if (Array.isArray(loadedEventsArray)) { 
+                        const fileContent = JSON.parse(e.target.result);
+                        let loadedEventsArray;
+                        let newDisplayName = null;
+                        let newColorTheme = null;
+                        let sourceWasNewFormat = false;
+
+                        // Check if fileContent is an object with an 'events' array (new format)
+                        if (typeof fileContent === 'object' && fileContent !== null && Array.isArray(fileContent.events)) {
+                            loadedEventsArray = fileContent.events;
+                            newDisplayName = fileContent.calendarDisplayName || null;
+                            newColorTheme = fileContent.colorTheme || null;
+                            sourceWasNewFormat = true;
+                            showNotification("Loaded new calendar format (with metadata).", "info", 3000);
+                        } else if (Array.isArray(fileContent)) { // Old format (array of events)
+                            loadedEventsArray = fileContent;
+                            sourceWasNewFormat = false;
+                            showNotification("Loaded old calendar format (event array only).", "info", 3000);
+                        } else {
+                            throw new Error("Unsupported JSON structure. Expected an array of events or an object with an 'events' array and metadata.");
+                        }
+
+                        if (Array.isArray(loadedEventsArray)) {
                             const isValidStructure = loadedEventsArray.every(item => typeof item.date === 'string' && typeof item.title === 'string');
                             if (isValidStructure) {
                                 const newEventsWithIds = loadedEventsArray.map(ev => ({...ev, id: ev.id || String(Date.now()) + Math.random().toString(36).substr(2,9) }));
+
                                 if (append) {
                                     currentEventsData = currentEventsData.concat(newEventsWithIds);
-                                } else {
+                                    // If appending, decide how to merge metadata.
+                                    // This example prioritizes metadata from the appended file if it exists.
+                                    if (sourceWasNewFormat) {
+                                        currentCalendarDisplayName = newDisplayName || currentCalendarDisplayName;
+                                        currentColorTheme = newColorTheme || currentColorTheme;
+                                        loadedFileHadMetadata = loadedFileHadMetadata || sourceWasNewFormat;
+                                    }
+                                } else { // Overwriting
                                     currentEventsData = newEventsWithIds;
+                                    currentCalendarDisplayName = newDisplayName;
+                                    currentColorTheme = newColorTheme;
+                                    loadedFileHadMetadata = sourceWasNewFormat;
                                 }
+
                                 renderEventList();
                                 updateEventGroupsDatalist();
                                 showNotification(`Events JSON ${append ? 'appended' : 'loaded'} successfully!`, "success");
                             } else {
-                                showNotification("Loaded JSON array contains items with invalid event structure.", "error");
+                                showNotification("Loaded JSON contains items with invalid event structure (missing date or title).", "error");
                             }
                         } else {
-                            showNotification("Invalid JSON file. Expected an array of event objects.", "error");
+                            // This path should ideally not be reached due to earlier checks.
+                            showNotification("Invalid content: Expected an array of events.", "error");
                         }
                     } catch (error) {
                         showNotification("Error parsing JSON file: " + error.message, "error");
+                        console.error("JSON Parse Error:", error);
                     }
-                    loadEventsFileIn.value = null; 
+                    loadEventsFileIn.value = null; // Reset file input
                 };
                 reader.onerror = () => {
                     showNotification("Error reading file.", "error");
-                    loadEventsFileIn.value = null; 
+                    loadEventsFileIn.value = null; // Reset file input
                 }
                 reader.readAsText(file);
             }
         });
 
         generateEventsJsonBtn.addEventListener('click', () => {
-            if (currentEventsData.length === 0) {
+            if (currentEventsData.length === 0 && !loadedFileHadMetadata) {
                 showNotification("No events to generate JSON for.", "info");
                 return;
             }
+
             const eventsToOutput = currentEventsData.map(event => {
-                return { date: event.date, title: event.title, description: event.description, group: event.group, id: event.id };
+                // Ensure essential fields are present, id is particularly important
+                return {
+                    id: event.id || String(Date.now()) + Math.random().toString(36).substr(2,9), // Ensure ID
+                    date: event.date,
+                    title: event.title,
+                    description: event.description || "", // Ensure description is at least an empty string
+                    group: event.group || ""           // Ensure group is at least an empty string
+                };
             });
-            const eventsJsonString = JSON.stringify(eventsToOutput, null, 2);
-            displayJsonModal(eventsJsonString); 
+
+            let outputObject;
+            // If metadata was loaded with the file, or if there's a display name (even if events are empty)
+            if (loadedFileHadMetadata || currentCalendarDisplayName) {
+                outputObject = {
+                    calendarDisplayName: currentCalendarDisplayName || "My Hiraeth Calendar", // Provide a default
+                    colorTheme: currentColorTheme || { // Provide a default empty or generic theme
+                        light: { bg: "#f0f2f5", text: "#1a202c", dot: "#4299e1" }, // Example default
+                        dark: { bg: "#1a202c", text: "#e2e8f0", dot: "#63b3ed" }  // Example default
+                    },
+                    events: eventsToOutput
+                };
+            } else { // Fallback to old format: just an array of events
+                outputObject = eventsToOutput;
+            }
+
+            const eventsJsonString = JSON.stringify(outputObject, null, 2);
+            displayJsonModal(eventsJsonString);
         });
 
         closeJsonModalBtn.addEventListener('click', closeJsonModal);
