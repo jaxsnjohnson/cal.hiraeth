@@ -1,16 +1,23 @@
-[
-  {
-    "date": "0076-03-21",
-    "title": "Arrival",
-    "description": "The mist delivers the group to the Durst manor and Old-lin.",
-    "group": "Curse of the Bloodwrite",
-    "id": "1748464392233wo6ecy9qc"
+{
+  "calendarDisplayName": "Curse of the Bloodwrite",
+  "colorTheme": {
+    "light": { "bg": "#e7738b", "text": "#065f46", "dot": "#3661a8" },
+    "dark":  { "bg": "#d53b3d", "text": "#d1fae5", "dot": "#3661a8" }
   },
-  {
-    "date": "0076-03-30",
-    "title": "Hob's Camp Full Moon Party",
-    "description": "",
-    "group": "Curse of the Bloodwrite",
-    "id": "1748464473879tfcitq0jo"
-  }
-]
+  "events": [
+    {
+      "date": "0076-03-21",
+      "title": "Arrival",
+      "description": "The mist delivers the group to the Durst manor and Old-lin.",
+      "group": "Curse of the Bloodwrite",
+      "id": "1748464392233wo6ecy9qc"
+    },
+    {
+      "date": "0076-03-30",
+      "title": "Hob's Camp Full Moon Party",
+      "description": "",
+      "group": "Curse of the Bloodwrite",
+      "id": "1748464473879tfcitq0jo"
+    }
+  ]
+}

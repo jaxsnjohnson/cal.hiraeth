@@ -1,4 +1,10 @@
-[
+{
+  "calendarDisplayName": "Test Calendar",
+  "colorTheme": {
+    "light": { "bg": "#668586", "text": "#065f46", "dot": "#3661a8" },
+    "dark":  { "bg": "#9E8FB2", "text": "#d1fae5", "dot": "#3661a8" }
+  },
+  "events": [
     {
       "date": "0076-03-15",
       "title": "Festival of Awakening",
@@ -35,3 +41,4 @@
       "id": "evt_005"
     }
   ]
+}
