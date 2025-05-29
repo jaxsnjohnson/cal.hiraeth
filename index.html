@@ -5,139 +5,231 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hiraeth Calendar</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet">
     <style>
-        /* Custom scrollbar for webkit browsers */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
+        :root {
+            --font-main: 'EB Garamond', serif;
+            /* Light Theme */
+            --bg-body-light: #f0f2f5; /* Light grayish blue */
+            --bg-frosted-light: rgba(255, 255, 255, 0.75); /* Increased opacity slightly */
+            --text-primary-light: #1a202c; /* Almost black */
+            --text-secondary-light: #4a5568; /* Dark gray */
+            --border-light: rgba(0, 0, 0, 0.1);
+            --accent-light: #4299e1; /* Blue */
+            --accent-hover-light: #3182ce;
+            --weekend-header-bg-light: rgba(226, 232, 240, 0.6); 
+            --weekend-cell-bg-light: rgba(247, 250, 252, 0.6); 
+            --modal-backdrop-bg-light: rgba(0, 0, 0, 0.35);
+
+            /* Dark Theme */
+            --bg-body-dark: #1a202c; /* Very dark blue/gray */
+            --bg-frosted-dark: rgba(45, 55, 72, 0.75); /* Increased opacity slightly */
+            --text-primary-dark: #e2e8f0; /* Light gray */
+            --text-secondary-dark: #a0aec0; /* Gray */
+            --border-dark: rgba(255, 255, 255, 0.15);
+            --accent-dark: #63b3ed; /* Lighter blue */
+            --accent-hover-dark: #4299e1;
+            --weekend-header-bg-dark: rgba(74, 85, 104, 0.6); 
+            --weekend-cell-bg-dark: rgba(55, 65, 81, 0.6); 
+            --modal-backdrop-bg-dark: rgba(0, 0, 0, 0.55);
+
+            /* Base Event Colors (used by default calendar color) */
+            --event-marker-bg-light: #68d391; /* Green */
+            --event-marker-text-light: #276749;
+            --event-marker-dot-light: #276749;
+            --event-marker-bg-dark: #38a169; /* Darker green */
+            --event-marker-text-dark: #c6f6d5;
+            --event-marker-dot-dark: #c6f6d5;
+            
+            /* Default event colors (can reuse existing or define new) */
+            --cal-color-default-light-bg: var(--event-marker-bg-light);
+            --cal-color-default-light-text: var(--event-marker-text-light);
+            --cal-color-default-light-dot: var(--event-marker-dot-light);
+            --cal-color-default-dark-bg: var(--event-marker-bg-dark);
+            --cal-color-default-dark-text: var(--event-marker-text-dark);
+            --cal-color-default-dark-dot: var(--event-marker-dot-dark);
         }
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-body-light);
+            color: var(--text-primary-light);
+            transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
         }
-        ::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 10px;
+        .dark body {
+            background-color: var(--bg-body-dark);
+            color: var(--text-primary-dark);
         }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #555;
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--text-secondary-light); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-light); }
+        .dark ::-webkit-scrollbar-thumb { background: var(--text-secondary-dark); }
+        .dark ::-webkit-scrollbar-thumb:hover { background: var(--accent-dark); }
+
+        .frosted-glass {
+            background-color: var(--bg-frosted-light);
+            backdrop-filter: blur(12px) saturate(180%); /* Increased saturate */
+            -webkit-backdrop-filter: blur(12px) saturate(180%); /* Safari */
+            border: 1px solid var(--border-light);
+            border-radius: 0.75rem; /* 12px */
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.17);
+            transition: background-color 0.3s ease-in-out, border-color 0.3s ease-in-out;
         }
-        .dark ::-webkit-scrollbar-track {
-            background: #2d3748; /* dark:bg-gray-700 */
-        }
-        .dark ::-webkit-scrollbar-thumb {
-            background: #718096; /* dark:bg-gray-500 */
-        }
-        .dark ::-webkit-scrollbar-thumb:hover {
-            background: #a0aec0; /* dark:bg-gray-400 */
+        .dark .frosted-glass {
+            background-color: var(--bg-frosted-dark);
+            border-color: var(--border-dark);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25);
         }
 
         .calendar-grid {
             display: grid;
             grid-template-columns: repeat(7, minmax(0, 1fr));
-            gap: 1px; /* This gap + the grid background color creates the cell borders */
+            gap: 1px;
+            background-color: var(--border-light);
         }
-        .calendar-cell {
-            min-height: 120px; /* Adjusted min-height for potentially more content */
-        }
-        .event-marker {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            margin-right: 4px;
-            flex-shrink: 0; /* Prevent dot from shrinking */
-        }
-        /* For modal */
-        .modal-backdrop {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent backdrop */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 50; /* Ensure modal is on top */
-        }
-        .modal-content {
-            max-height: 80vh; /* Limit modal height */
-            overflow-y: auto; /* Allow scrolling for tall content */
+        .dark .calendar-grid {
+            background-color: var(--border-dark);
         }
 
-        .weekend-header {
-            background-color: #e2e8f0; /* Tailwind's bg-slate-200 */
-            font-weight: 600; /* semibold */
+        .calendar-cell {
+            min-height: 125px; 
+            background-color: var(--bg-frosted-light); 
+            transition: background-color 0.2s ease-in-out;
+            position: relative; /* For absolute positioned elements if needed */
         }
-        .dark .weekend-header {
-            background-color: #4a5568; /* Tailwind's dark:bg-slate-600 */
+        .dark .calendar-cell {
+            background-color: var(--bg-frosted-dark);
         }
-        .weekend-day-cell {
-            background-color: #f7fafc; /* Tailwind's bg-gray-50 */
+        .calendar-cell:hover {
+            background-color: rgba(var(--accent-light-rgb, 66, 153, 225), 0.12); 
         }
-        .dark .weekend-day-cell {
-            background-color: #2c3340; /* Custom dark weekend color */
+        .dark .calendar-cell:hover {
+             background-color: rgba(var(--accent-dark-rgb, 99, 179, 237), 0.18);
         }
-        /* Styling for event list in modal */
-        #search-results-list li, #modal-event-list li, .settings-modal-section div {
-            padding: 8px;
-            border-bottom: 1px solid #e5e7eb; /* dark:border-gray-700 */
+        
+        body { /* Helper to set RGB values for dynamic alpha */
+            --accent-light-rgb: 66, 153, 225;
+            --accent-dark-rgb: 99, 179, 237;
         }
-        .dark #search-results-list li, .dark #modal-event-list li, .dark .settings-modal-section div {
-             border-bottom: 1px solid #374151; /* dark:border-gray-600 */
+
+        .event-marker-item { /* Class for the event item in calendar cell */
+            display: flex;
+            align-items: center;
+            font-size: 0.7rem; /* Tailwind text-xs is 0.75rem, this is slightly smaller */
+            line-height: 1rem;
+            padding: 0.2rem 0.4rem; /* Adjusted padding */
+            border-radius: 0.375rem; /* rounded-md */
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: filter 0.2s ease-in-out;
         }
-        #search-results-list li:last-child, #modal-event-list li:last-child, .settings-modal-section div:last-child {
+        .event-marker-item:hover {
+            filter: brightness(1.1);
+        }
+        .event-marker-dot { /* Class for the dot itself */
+            width: 7px; /* Slightly larger dot */
+            height: 7px;
+            border-radius: 50%;
+            margin-right: 5px;
+            flex-shrink: 0;
+        }
+        
+        .modal-backdrop {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--modal-backdrop-bg-light);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 50; transition: background-color 0.3s ease-in-out;
+        }
+        .dark .modal-backdrop { background-color: var(--modal-backdrop-bg-dark); }
+        .modal-content { max-height: 85vh; overflow-y: auto; }
+
+        .weekend-header { background-color: var(--weekend-header-bg-light) !important; font-weight: 600; }
+        .dark .weekend-header { background-color: var(--weekend-header-bg-dark) !important; }
+        .weekend-day-cell { background-color: var(--weekend-cell-bg-light) !important; }
+        .dark .weekend-day-cell { background-color: var(--weekend-cell-bg-dark) !important; }
+
+        #search-results-list li, #modal-event-list li, .settings-modal-section div label { /* Applied to label for better click area */
+            padding: 10px 8px;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .dark #search-results-list li, .dark #modal-event-list li, .dark .settings-modal-section div label {
+             border-bottom: 1px solid var(--border-dark);
+        }
+        #search-results-list li:last-child, #modal-event-list li:last-child, .settings-modal-section div:last-of-type label { /* Target last label in a div */
             border-bottom: none;
         }
-        .settings-modal-section h4 {
-            @apply text-lg font-semibold mb-2 text-gray-700 dark:text-gray-300 pt-2;
-        }
-        #loading-status-in-settings {
-            @apply text-sm text-gray-500 dark:text-gray-400 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700;
-        }
+        .settings-modal-section h4 { @apply text-lg font-semibold mb-3 text-[var(--text-primary-light)] dark:text-[var(--text-primary-dark)] pt-2; }
+        #loading-status-in-settings { @apply text-sm text-[var(--text-secondary-light)] dark:text-[var(--text-secondary-dark)] mb-3 pb-2 border-b border-[var(--border-light)] dark:border-[var(--border-dark)]; }
+
+        .btn { @apply px-4 py-2 rounded-lg shadow-md font-semibold text-sm transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-opacity-50; }
+        .btn-primary { @apply bg-[var(--accent-light)] text-white hover:bg-[var(--accent-hover-light)] focus:ring-[var(--accent-light)]; }
+        .dark .btn-primary { @apply bg-[var(--accent-dark)] text-[var(--bg-body-dark)] hover:bg-[var(--accent-hover-dark)] focus:ring-[var(--accent-dark)]; }
+        .btn-secondary { @apply bg-gray-200 text-gray-700 hover:bg-gray-300 focus:ring-gray-400; }
+        .dark .btn-secondary { @apply bg-gray-700 text-gray-200 hover:bg-gray-600 focus:ring-gray-500; } /* Adjusted dark secondary */
+        .btn-icon { @apply p-2.5 leading-none; } /* Slightly more padding for icons */
+
+        .text-primary { color: var(--text-primary-light); } .dark .text-primary { color: var(--text-primary-dark); }
+        .text-secondary { color: var(--text-secondary-light); } .dark .text-secondary { color: var(--text-secondary-dark); }
+        .text-accent { color: var(--accent-light); } .dark .text-accent { color: var(--accent-dark); }
+
+        /* Scrollbar for event containers within cells */
+        .scrollbar-thin::-webkit-scrollbar { width: 5px; height: 5px; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(var(--accent-light-rgb), 0.5); border-radius: 10px;}
+        .dark .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(var(--accent-dark-rgb), 0.5); }
+        .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+
+
     </style>
 </head>
-<body class="font-sans antialiased transition-colors duration-300 ease-in-out bg-gray-100 dark:bg-gray-900">
+<body class="bg-[var(--bg-body-light)] dark:bg-[var(--bg-body-dark)]">
 
-    <div id="app-container" class="min-h-screen text-gray-800 dark:text-gray-200 p-4 transition-colors duration-300 ease-in-out">
-        <header class="navigation-controls mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow transition-colors duration-300 ease-in-out">
-            <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-                <div class="flex items-center space-x-2 sm:space-x-4">
-                    <button id="prev-month" class="px-3 py-2 sm:px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-md shadow">&lt; Prev</button>
+    <div id="app-container" class="min-h-screen p-4 md:p-6 lg:p-8 text-primary">
+        <header class="navigation-controls mb-6 p-4 md:p-6 frosted-glass">
+            <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
+                <div class="flex items-center space-x-3 sm:space-x-4">
+                    <button id="prev-month" class="btn btn-primary btn-icon text-xl" title="Previous Month">&lt;</button>
                     <div class="text-center">
-                        <h2 id="current-month-year" class="text-xl md:text-2xl font-semibold min-w-[160px] sm:min-w-[180px]"></h2>
-                        <p id="current-year-month-numeric" class="text-xs text-gray-500 dark:text-gray-400"></p>
+                        <h2 id="current-month-year" class="text-2xl md:text-3xl font-semibold text-primary min-w-[180px] sm:min-w-[220px]"></h2>
+                        <p id="current-year-month-numeric" class="text-xs text-secondary"></p>
                     </div>
-                    <button id="next-month" class="px-3 py-2 sm:px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-md shadow">Next &gt;</button>
+                    <button id="next-month" class="btn btn-primary btn-icon text-xl" title="Next Month">&gt;</button>
                 </div>
 
-                <div id="zodiac-display" class="text-center text-sm sm:text-base font-medium text-indigo-600 dark:text-indigo-400 transition-colors duration-300 ease-in-out w-full lg:w-auto order-first lg:order-none">
+                <div id="zodiac-display" class="text-center text-sm sm:text-base font-medium text-accent w-full lg:w-auto order-first lg:order-none lg:mx-auto px-4 py-2 rounded-md">
                     </div>
 
-                <div class="flex items-center space-x-2 sm:space-x-4">
-                    <button id="settings-button" class="px-3 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-md shadow text-sm sm:text-base">⚙️ Settings</button>
-                    <button id="search-button" class="px-3 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-md shadow text-sm sm:text-base">🔍 Search</button>
-                    <button id="today-button" class="px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md shadow text-sm sm:text-base">Today</button>
-                    <button id="lore-button" class="px-3 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-md shadow text-sm sm:text-base">Hiraeth Lore</button>
+                <div class="flex items-center space-x-2 sm:space-x-3">
+                    <button id="settings-button" class="btn btn-secondary btn-icon text-lg" title="Settings">⚙️</button>
+                    <button id="search-button" class="btn btn-secondary btn-icon text-lg" title="Search">🔍</button>
+                    <button id="today-button" class="btn btn-primary" title="Go to Today">Today</button>
+                    <button id="lore-button" class="btn btn-secondary" title="Hiraeth Lore">Lore</button>
+                    <button id="theme-toggle-button" class="btn btn-secondary btn-icon text-lg" title="Toggle Theme">🌓</button>
                 </div>
             </div>
-            </header>
+        </header>
 
-        <main id="calendar-view" class="bg-white dark:bg-gray-800 p-1 rounded-lg shadow transition-colors duration-300 ease-in-out">
-            <div id="month-grid-header" class="calendar-grid bg-gray-300 dark:bg-gray-600 mb-1 rounded-t-md transition-colors duration-300 ease-in-out">
-            </div>
-            <div id="month-grid-days" class="calendar-grid bg-gray-300 dark:bg-gray-600 rounded-b-md transition-colors duration-300 ease-in-out">
-            </div>
+        <main id="calendar-view" class="frosted-glass p-1 shadow-xl">
+            <div id="month-grid-header" class="calendar-grid mb-px rounded-t-lg overflow-hidden">
+                </div>
+            <div id="month-grid-days" class="calendar-grid rounded-b-lg overflow-hidden">
+                </div>
         </main>
 
         <div id="event-modal" class="modal-backdrop hidden">
-            <div class="modal-content bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-11/12 md:w-2/3 lg:w-1/2 transition-colors duration-300 ease-in-out">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 id="modal-title" class="text-2xl font-semibold">Details</h3>
-                    <button id="close-modal" class="text-gray-600 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 text-2xl">&times;</button>
+            <div class="modal-content frosted-glass p-6 shadow-2xl w-11/12 md:w-2/3 lg:w-1/2 max-w-2xl">
+                <div class="flex justify-between items-center mb-4 pb-3 border-b border-[var(--border-light)] dark:border-[var(--border-dark)]">
+                    <h3 id="modal-title" class="text-2xl font-semibold text-primary">Details</h3>
+                    <button id="close-modal" class="text-secondary hover:text-red-500 dark:hover:text-red-400 text-3xl font-light leading-none" title="Close Modal">&times;</button>
                 </div>
-                <div id="modal-body" class="space-y-3">
-                </div>
+                <div id="modal-body" class="space-y-4 text-primary">
+                    </div>
             </div>
         </div>
     </div>
@@ -166,14 +258,14 @@
                 cycle: 15,
                 shift: 9,
                 granularity: 8,
-                phases: ["🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"]
+                phases: ["🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"] 
             },
-            calendarEpochStart: { year: 1, month: 0, day: 1 },
+            calendarEpochStart: { year: 1, month: 0, day: 1 }, 
             loreText: `
-                <h4 class="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-100">Hiraeth Time System</h4>
-                <p class="mb-2 text-gray-700 dark:text-gray-300">Dates are written YY-MM-DD. The days and months are unique to Hiraeth.</p>
-                <h5 class="text-lg font-semibold mt-3 mb-1 text-gray-800 dark:text-gray-100">Days of the Week:</h5>
-                <ul class="list-disc list-inside mb-2 text-gray-700 dark:text-gray-300">
+                <h4 class="text-xl font-semibold mb-2 text-primary">Hiraeth Time System</h4>
+                <p class="mb-2 text-secondary">Dates are written YY-MM-DD. The days and months are unique to Hiraeth.</p>
+                <h5 class="text-lg font-semibold mt-3 mb-1 text-primary">Days of the Week:</h5>
+                <ul class="list-disc list-inside mb-2 text-secondary space-y-1">
                     <li>Pythda: Named after the Goddess of life Pythia.</li>
                     <li>Minda: Named after the God of time Minos.</li>
                     <li>Voida: Named after the God of Space Voidos.</li>
@@ -182,29 +274,48 @@
                     <li>Hestda: Named after the Goddess of the hearth Hesta. (Weekend)</li>
                     <li>Bethda: Named after the god the sun Bethtox. (Weekend)</li>
                 </ul>
-                <h5 class="text-lg font-semibold mt-3 mb-1 text-gray-800 dark:text-gray-100">Zodiac Signs & Meanings:</h5>
-                <p class="mb-2 text-gray-700 dark:text-gray-300">Each month has a corresponding Zodiac sign with unique characteristics and lore. (Details shown with month)</p>
-                <h4 class="text-xl font-semibold mt-4 mb-2 text-gray-800 dark:text-gray-100">Timekeeping in Hiraeth</h4>
-                <p class="mb-2 text-gray-700 dark:text-gray-300">Passage of time can vary across different planes. Magic can also manipulate time.</p>
-                <h4 class="text-xl font-semibold mt-4 mb-2 text-gray-800 dark:text-gray-100">Timelines & Birthdays</h4>
-                <p class="mb-2 text-gray-700 dark:text-gray-300">Hiraeth has multiple timelines. Birthdays can be celebrated with specific conditions.</p>
+                <h5 class="text-lg font-semibold mt-3 mb-1 text-primary">Zodiac Signs & Meanings:</h5>
+                <p class="mb-2 text-secondary">Each month has a corresponding Zodiac sign with unique characteristics and lore. (Details shown with month)</p>
+                <h4 class="text-xl font-semibold mt-4 mb-2 text-primary">Timekeeping in Hiraeth</h4>
+                <p class="mb-2 text-secondary">Passage of time can vary across different planes. Magic can also manipulate time.</p>
+                <h4 class="text-xl font-semibold mt-4 mb-2 text-primary">Timelines & Birthdays</h4>
+                <p class="mb-2 text-secondary">Hiraeth has multiple timelines. Birthdays can be celebrated with specific conditions.</p>
             `
         };
 
+        // --- CALENDAR COLOR CONFIGURATION ---
+        const CALENDAR_COLORS_CONFIG = {
+            "default": { // Keep a default fallback
+                light: { bg: 'var(--cal-color-default-light-bg)', text: 'var(--cal-color-default-light-text)', dot: 'var(--cal-color-default-light-dot)' },
+                dark: { bg: 'var(--cal-color-default-dark-bg)', text: 'var(--cal-color-default-dark-text)', dot: 'var(--cal-color-default-dark-dot)' }
+            }
+        };
+
+        function getEventColors(event) {
+            const theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+            const calendarName = event.sourceCalendarName; // Relies on sourceCalendarName being added to event objects
+
+            if (calendarName && CALENDAR_COLORS_CONFIG[calendarName]) {
+                return CALENDAR_COLORS_CONFIG[calendarName][theme];
+            }
+            return CALENDAR_COLORS_CONFIG.default[theme];
+        }
+
+
         // --- APPLICATION STATE (DEFAULTS) ---
         let hiraethYear = 76;
-        let hiraethMonth = 2;
+        let hiraethMonth = 2; 
         let hiraethDay = 21;
         let showMoonPhases = true;
-        let calendarLoadingStatusMessage = "Loading calendars..."; // MODIFICATION: Store status message
+        let calendarLoadingStatusMessage = "Loading calendars...";
 
         const calendarFilesToLoad = [
             "../calendars/sample_hiraeth_events.json",
             "../calendars/Curse-of-the-Bloodwrite.json"
         ];
 
-        let allCalendarsData = {};
-        let activeCalendars = new Set();
+        let allCalendarsData = {}; 
+        let activeCalendars = new Set(); 
 
         // --- DOM ELEMENTS ---
         const appContainer = document.getElementById('app-container');
@@ -219,31 +330,40 @@
         const loreButton = document.getElementById('lore-button');
         const searchButton = document.getElementById('search-button');
         const settingsButton = document.getElementById('settings-button');
+        const themeToggleButton = document.getElementById('theme-toggle-button');
         const eventModal = document.getElementById('event-modal');
         const modalTitle = document.getElementById('modal-title');
         const modalBody = document.getElementById('modal-body');
         const closeModalButton = document.getElementById('close-modal');
-        // MODIFICATION: Removed loadingCalendarsMessageEl as it's no longer in main HTML
 
         // --- THEME HANDLING ---
         function setInitialTheme() {
             const storedTheme = localStorage.getItem('hiraethCalendarTheme');
+            const themeToggleIcon = themeToggleButton.firstChild; 
+
             if (storedTheme) {
                 document.documentElement.classList.toggle('dark', storedTheme === 'dark');
                 document.documentElement.style.colorScheme = storedTheme;
+                if (themeToggleIcon) themeToggleIcon.textContent = storedTheme === 'dark' ? '⚪' : '⚫';
             } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
                 document.documentElement.classList.add('dark');
                 document.documentElement.style.colorScheme = 'dark';
+                 if (themeToggleIcon) themeToggleIcon.textContent = '⚪';
             } else {
                 document.documentElement.classList.remove('dark');
                 document.documentElement.style.colorScheme = 'light';
+                 if (themeToggleIcon) themeToggleIcon.textContent = '⚫';
             }
         }
+
         function toggleTheme() {
             const isDark = document.documentElement.classList.toggle('dark');
             const newTheme = isDark ? 'dark' : 'light';
             document.documentElement.style.colorScheme = newTheme;
             localStorage.setItem('hiraethCalendarTheme', newTheme);
+            const themeToggleIcon = themeToggleButton.firstChild;
+            if (themeToggleIcon) themeToggleIcon.textContent = isDark ? '⚪' : '⚫';
+            renderCalendar(); // Re-render calendar to apply theme changes to event colors immediately
         }
 
         // --- UTILITY FUNCTIONS ---
@@ -258,22 +378,25 @@
             totalDays += dayOfMonth;
             return totalDays;
         }
+
         function isHiraethLeapYear(year) { return false; }
+
         function getHiraethDaysInMonth(year, monthIndex) {
             if (monthIndex < 0 || monthIndex >= HIRAETH_CONFIG.months.length) {
                 console.error(`[getHiraethDaysInMonth] Invalid monthIndex: ${monthIndex} for year: ${year}. Defaulting to 30 days.`);
-                return 30;
+                return 30; 
             }
             return HIRAETH_CONFIG.months[monthIndex].days;
         }
+
         function getLuminusMoonPhase(year, month, day) {
             const currentGlobalEpochDay = hiraethDateToGlobalEpochDays(year, month, day);
             const moon = HIRAETH_CONFIG.primaryMoon;
-            const dayForCycleCalc = currentGlobalEpochDay -1;
+            const dayForCycleCalc = currentGlobalEpochDay -1; 
             const dayInCycle = (dayForCycleCalc + moon.shift) % moon.cycle;
-            const phaseValue = dayInCycle / moon.cycle;
+            const phaseValue = dayInCycle / moon.cycle; 
             const phaseIndex = Math.floor(phaseValue * moon.granularity);
-            return phaseIndex < moon.phases.length ? phaseIndex : moon.phases.length -1 ;
+            return phaseIndex < moon.phases.length ? phaseIndex : moon.phases.length -1 ; 
         }
 
         // --- MODAL HANDLING ---
@@ -281,7 +404,7 @@
             if (modalTitle) modalTitle.textContent = title;
             if (modalBody) modalBody.innerHTML = contentHtml;
             if (isSettingsModal) {
-                addSettingsModalEventListeners();
+                addSettingsModalEventListeners(); 
             }
             if (eventModal) eventModal.classList.remove('hidden');
         }
@@ -303,15 +426,23 @@
         function getCalendarTogglesHTML() {
             let togglesHTML = '<div class="settings-modal-section"><h4>Loaded Calendars</h4>';
             if (Object.keys(allCalendarsData).length === 0) {
-                togglesHTML += '<p class="text-sm text-gray-500 dark:text-gray-400">No external calendars loaded.</p>';
+                togglesHTML += '<p class="text-sm text-secondary">No external calendars loaded.</p>';
             } else {
                 Object.keys(allCalendarsData).sort().forEach(originalCalendarName => {
                     const checkboxId = `toggle-cal-${originalCalendarName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`;
                     const isChecked = activeCalendars.has(originalCalendarName);
+                    
+                    const currentTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+                    const calendarDisplayColors = (CALENDAR_COLORS_CONFIG[originalCalendarName] && CALENDAR_COLORS_CONFIG[originalCalendarName][currentTheme])
+                                                 ? CALENDAR_COLORS_CONFIG[originalCalendarName][currentTheme]
+                                                 : CALENDAR_COLORS_CONFIG.default[currentTheme];
+
                     togglesHTML += `
                         <div>
-                            <label for="${checkboxId}" class="flex items-center space-x-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300">
-                                <input type="checkbox" id="${checkboxId}" data-calendar-name="${originalCalendarName}" ${isChecked ? 'checked' : ''} class="form-checkbox h-4 w-4 text-blue-600 dark:text-blue-500 bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:focus:ring-blue-600 focus:ring-offset-0 dark:focus:ring-offset-gray-800">
+                            <label for="${checkboxId}" class="flex items-center space-x-3 cursor-pointer text-sm text-primary py-1.5">
+                                <input type="checkbox" id="${checkboxId}" data-calendar-name="${originalCalendarName}" ${isChecked ? 'checked' : ''} 
+                                       class="form-checkbox h-4 w-4 rounded text-[var(--accent-light)] dark:text-[var(--accent-dark)] bg-gray-200 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-[var(--accent-light)] dark:focus:ring-[var(--accent-dark)] focus:ring-offset-0 dark:focus:ring-offset-gray-800">
+                                <span class="inline-block w-3.5 h-3.5 rounded-full" style="background-color: ${calendarDisplayColors.bg}; border: 1px solid ${calendarDisplayColors.dot};"></span>
                                 <span>${originalCalendarName}</span>
                             </label>
                         </div>`;
@@ -321,23 +452,24 @@
             return togglesHTML;
         }
 
+
         function getMoonPhaseToggleHTML() {
             return `
                 <div class="settings-modal-section">
                     <h4>Display Options</h4>
                     <div>
-                        <label for="modal-toggle-moon-phases" class="flex items-center space-x-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300">
-                            <input type="checkbox" id="modal-toggle-moon-phases" ${showMoonPhases ? 'checked' : ''} class="form-checkbox h-4 w-4 text-blue-600 dark:text-blue-500 bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:focus:ring-blue-600 focus:ring-offset-0 dark:focus:ring-offset-gray-800">
+                        <label for="modal-toggle-moon-phases" class="flex items-center space-x-3 cursor-pointer text-sm text-primary py-1.5">
+                            <input type="checkbox" id="modal-toggle-moon-phases" ${showMoonPhases ? 'checked' : ''} 
+                                   class="form-checkbox h-4 w-4 rounded text-[var(--accent-light)] dark:text-[var(--accent-dark)] bg-gray-200 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-[var(--accent-light)] dark:focus:ring-[var(--accent-dark)] focus:ring-offset-0 dark:focus:ring-offset-gray-800">
                             <span>Show Moon Phases</span>
                         </label>
                     </div>
                 </div>`;
         }
-
+        
         function openSettingsModal() {
-            // MODIFICATION: Add loading status message to the settings modal
             const loadingStatusHTML = `<div id="loading-status-in-settings">${calendarLoadingStatusMessage}</div>`;
-            const calendarTogglesHTML = getCalendarTogglesHTML();
+            const calendarTogglesHTML = getCalendarTogglesHTML(); // Generate HTML with current theme colors
             const moonPhaseToggleHTML = getMoonPhaseToggleHTML();
             openModal("Calendar Settings", loadingStatusHTML + calendarTogglesHTML + moonPhaseToggleHTML, true);
         }
@@ -349,14 +481,14 @@
                     const calendarName = e.target.dataset.calendarName;
                     if (e.target.checked) activeCalendars.add(calendarName);
                     else activeCalendars.delete(calendarName);
-                    renderCalendar();
+                    renderCalendar(); 
                 });
             });
             const moonToggle = modalBody.querySelector('#modal-toggle-moon-phases');
             if (moonToggle) {
                 moonToggle.addEventListener('change', (e) => {
                     showMoonPhases = e.target.checked;
-                    renderCalendar();
+                    renderCalendar(); 
                 });
             }
         }
@@ -365,26 +497,69 @@
             console.log(`[loadCalendarFile] Attempting to fetch: ${filePath}`);
             try {
                 const response = await fetch(filePath);
-                console.log(`[loadCalendarFile] Response status for ${filePath}: ${response.status}`);
                 if (!response.ok) {
                     console.error(`[loadCalendarFile] HTTP error! Status: ${response.status} for ${filePath}.`);
                     throw new Error(`HTTP error! status: ${response.status} for ${filePath}`);
                 }
-                const events = await response.json();
-                if (Array.isArray(events)) {
-                    const rawFileName = filePath.split('/').pop().replace('.json', '');
-                    const standardizedName = rawFileName.replace(/_/g, ' ')
-                                                     .replace(/[^a-zA-Z0-9\s-]/g, ' ')
-                                                     .replace(/\s+/g, ' ')
-                                                     .trim();
-                    const calendarKeyName = standardizedName || 'Unnamed Calendar';
-                    allCalendarsData[calendarKeyName] = events;
-                    console.log(`[loadCalendarFile] Successfully loaded and parsed: "${filePath}". Key: "${calendarKeyName}"`);
-                    return { status: 'fulfilled', name: calendarKeyName };
-                } else {
-                    console.error(`[loadCalendarFile] Invalid JSON structure for ${filePath}. Expected an array.`);
-                    return { status: 'rejected', name: filePath, reason: 'Invalid JSON array structure' };
+                const calendarData = await response.json(); // Expect an object now
+
+                // Validate structure: must be an object with an 'events' array
+                if (typeof calendarData !== 'object' || calendarData === null || !Array.isArray(calendarData.events)) {
+                    console.error(`[loadCalendarFile] Invalid JSON structure for ${filePath}. Expected an object with an 'events' array.`);
+                    return { status: 'rejected', name: filePath, reason: 'Invalid JSON structure' };
                 }
+
+                const rawFileName = filePath.split('/').pop().replace('.json', '');
+                const standardizedFileName = rawFileName.replace(/_/g, ' ')
+                                                    .replace(/[^a-zA-Z0-9\s-]/g, ' ')
+                                                    .replace(/\s+/g, ' ')
+                                                    .trim();
+
+                // Use calendarDisplayName from JSON if available, otherwise fallback to standardized filename
+                const calendarKeyName = calendarData.calendarDisplayName || standardizedFileName || 'Unnamed Calendar';
+
+                // Populate CALENDAR_COLORS_CONFIG if colorTheme is present in the JSON
+                if (calendarData.colorTheme) {
+                    if (calendarData.colorTheme.light && calendarData.colorTheme.dark) {
+                        CALENDAR_COLORS_CONFIG[calendarKeyName] = {
+                            light: {
+                                bg: calendarData.colorTheme.light.bg || CALENDAR_COLORS_CONFIG.default.light.bg,
+                                text: calendarData.colorTheme.light.text || CALENDAR_COLORS_CONFIG.default.light.text,
+                                dot: calendarData.colorTheme.light.dot || CALENDAR_COLORS_CONFIG.default.light.dot
+                            },
+                            dark: {
+                                bg: calendarData.colorTheme.dark.bg || CALENDAR_COLORS_CONFIG.default.dark.bg,
+                                text: calendarData.colorTheme.dark.text || CALENDAR_COLORS_CONFIG.default.dark.text,
+                                dot: calendarData.colorTheme.dark.dot || CALENDAR_COLORS_CONFIG.default.dark.dot
+                            }
+                        };
+                        console.log(`[loadCalendarFile] Applied custom colors for calendar: "${calendarKeyName}"`);
+                    } else {
+                        console.warn(`[loadCalendarFile] colorTheme for "${calendarKeyName}" is incomplete. Using default colors.`);
+                        // Ensure it still gets an entry, falling back to default, so getEventColors doesn't fail to find the key
+                        if (!CALENDAR_COLORS_CONFIG[calendarKeyName]) {
+                            CALENDAR_COLORS_CONFIG[calendarKeyName] = JSON.parse(JSON.stringify(CALENDAR_COLORS_CONFIG.default));
+                        }
+                    }
+                } else {
+                    console.log(`[loadCalendarFile] No colorTheme found for "${calendarKeyName}". Will use default colors.`);
+                    // Ensure it still gets an entry, falling back to default
+                    if (!CALENDAR_COLORS_CONFIG[calendarKeyName]) {
+                        CALENDAR_COLORS_CONFIG[calendarKeyName] = JSON.parse(JSON.stringify(CALENDAR_COLORS_CONFIG.default));
+                    }
+                }
+
+                // Add sourceCalendarName (now calendarKeyName) and ensure unique ID for each event from calendarData.events
+                const eventsWithSource = calendarData.events.map(event => ({
+                    ...event,
+                    sourceCalendarName: calendarKeyName, // Use the derived key name
+                    id: event.id || String(Date.now()) + Math.random().toString(36).substr(2,9) // Ensure unique ID
+                }));
+                allCalendarsData[calendarKeyName] = eventsWithSource; // Store events under this key name
+
+                console.log(`[loadCalendarFile] Successfully loaded and parsed: "<span class="math-inline">\{filePath\}"\. Key\: "</span>{calendarKeyName}"`);
+                return { status: 'fulfilled', name: calendarKeyName };
+
             } catch (error) {
                 console.error(`[loadCalendarFile] Fetch or JSON parsing error for ${filePath}:`, error);
                 return { status: 'rejected', name: filePath, reason: error.message || 'Failed to fetch or parse' };
@@ -392,15 +567,11 @@
         }
 
         async function loadAllDefinedCalendars() {
-            // MODIFICATION: Update global status message instead of a specific DOM element
             calendarLoadingStatusMessage = "Loading calendars...";
             if (calendarFilesToLoad.length === 0) {
                 calendarLoadingStatusMessage = "No external calendars defined to load.";
-                console.log("[loadAllDefinedCalendars] No calendar files to load.");
                 return;
             }
-
-            console.log("[loadAllDefinedCalendars] Starting to load calendar files:", calendarFilesToLoad);
             const loadPromises = calendarFilesToLoad.map(filePath => loadCalendarFile(filePath));
             const results = await Promise.allSettled(loadPromises);
             let loadedCount = 0;
@@ -409,99 +580,79 @@
                     loadedCount++;
                 }
             });
-
-            if (loadedCount > 0) {
-                calendarLoadingStatusMessage = `${loadedCount} of ${calendarFilesToLoad.length} external calendars loaded.`;
-            } else {
-                calendarLoadingStatusMessage = `Failed to load any external calendars. Check console.`;
-            }
-            console.log(`[loadAllDefinedCalendars] Finished loading. ${loadedCount} successful. Status: ${calendarLoadingStatusMessage}`);
+            calendarLoadingStatusMessage = loadedCount > 0 ? `${loadedCount} of ${calendarFilesToLoad.length} external calendars loaded.` : `Failed to load any external calendars. Check console.`;
         }
 
 
         // --- CALENDAR RENDERING ---
         function renderCalendar() {
-            console.log("[renderCalendar] Attempting to render calendar...");
+            console.log("[renderCalendar] Rendering...");
             try {
                 if (isNaN(hiraethYear) || isNaN(hiraethMonth) || hiraethMonth < 0 || hiraethMonth >= HIRAETH_CONFIG.months.length || isNaN(hiraethDay)) {
-                    console.error(`[renderCalendar] Invalid date state: Year=${hiraethYear}, Month=${hiraethMonth}, Day=${hiraethDay}. Resetting to defaults.`);
-                    hiraethYear = 76; hiraethMonth = 2; hiraethDay = 21;
+                    hiraethYear = 76; hiraethMonth = 2; hiraethDay = 21; 
                 }
-
                 const monthData = HIRAETH_CONFIG.months[hiraethMonth];
                 if (!monthData) {
-                    console.error(`[renderCalendar] CRITICAL: monthData is undefined for hiraethMonth ${hiraethMonth}.`);
                     if (currentMonthYearEl) currentMonthYearEl.textContent = "Error: Invalid Month";
-                    if (monthGridDaysEl) monthGridDaysEl.innerHTML = '<p class="p-4 text-red-500">Error: Month data unavailable.</p>';
+                    if (monthGridDaysEl) monthGridDaysEl.innerHTML = '<p class="p-4 text-red-500">Error: Month data.</p>';
                     return;
                 }
 
                 if (currentMonthYearEl) currentMonthYearEl.textContent = `${monthData.name}, ${String(hiraethYear).padStart(4, '0')}`;
                 if (currentYearMonthNumericEl) currentYearMonthNumericEl.textContent = `${String(hiraethYear).padStart(4, '0')}-${String(hiraethMonth + 1).padStart(2, '0')}`;
-                
-                // MODIFICATION: Zodiac display content set here
                 if (zodiacDisplayEl) {
-                     zodiacDisplayEl.innerHTML = `
-                        <strong class="block text-gray-800 dark:text-gray-100">${monthData.zodiac}</strong>
-                        <span class="text-xs text-gray-600 dark:text-gray-400">${monthData.zodiacInfo}</span>`;
+                     zodiacDisplayEl.innerHTML = `<strong class="block text-primary">${monthData.zodiac}</strong><span class="text-xs text-secondary">${monthData.zodiacInfo}</span>`;
                 }
 
-
                 if (monthGridHeaderEl) {
-                    monthGridHeaderEl.innerHTML = '';
+                    monthGridHeaderEl.innerHTML = ''; 
                     HIRAETH_CONFIG.daysOfWeek.forEach(dayName => {
                         const dayCell = document.createElement('div');
-                        dayCell.className = 'p-2 text-center font-semibold text-sm sm:text-base text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800';
+                        dayCell.className = 'p-3 text-center font-semibold text-sm sm:text-base text-primary calendar-cell'; 
                         if (HIRAETH_CONFIG.weekendDays.includes(dayName)) dayCell.classList.add('weekend-header');
                         dayCell.textContent = dayName;
                         monthGridHeaderEl.appendChild(dayCell);
                     });
-                } else { console.error("[renderCalendar] monthGridHeaderEl not found."); }
+                }
 
                 if (monthGridDaysEl) {
-                    monthGridDaysEl.innerHTML = '';
+                    monthGridDaysEl.innerHTML = ''; 
                     const daysInMonth = getHiraethDaysInMonth(hiraethYear, hiraethMonth);
                     const firstDayGlobalEpoch = hiraethDateToGlobalEpochDays(hiraethYear, hiraethMonth, 1);
-                    const firstDayOfWeek = (firstDayGlobalEpoch - 1 + HIRAETH_CONFIG.daysOfWeek.length) % HIRAETH_CONFIG.daysOfWeek.length;
+                    const firstDayOfWeek = (firstDayGlobalEpoch - 1 + HIRAETH_CONFIG.daysOfWeek.length) % HIRAETH_CONFIG.daysOfWeek.length; 
 
                     for (let i = 0; i < firstDayOfWeek; i++) {
                         const emptyCell = document.createElement('div');
-                        emptyCell.className = 'calendar-cell bg-gray-50 dark:bg-slate-700 border-transparent';
+                        emptyCell.className = 'calendar-cell border-transparent'; 
+                        emptyCell.style.backgroundColor = document.documentElement.classList.contains('dark') ? 'rgba(45, 55, 72, 0.4)' : 'rgba(255, 255, 255, 0.4)';
                         monthGridDaysEl.appendChild(emptyCell);
                     }
 
-                    const currentVisibleEvents = getVisibleEvents();
+                    const currentVisibleEvents = getVisibleEvents(); 
 
                     for (let day = 1; day <= daysInMonth; day++) {
                         const cell = document.createElement('div');
-                        cell.className = 'calendar-cell p-2 border-transparent cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900 relative bg-white dark:bg-gray-800 flex flex-col';
-
+                        cell.className = 'calendar-cell p-2 border-transparent cursor-pointer flex flex-col';
                         const currentDayGlobalEpoch = hiraethDateToGlobalEpochDays(hiraethYear, hiraethMonth, day);
                         const dayOfWeekIndex = (currentDayGlobalEpoch - 1 + HIRAETH_CONFIG.daysOfWeek.length) % HIRAETH_CONFIG.daysOfWeek.length;
                         if (HIRAETH_CONFIG.weekendDays.includes(HIRAETH_CONFIG.daysOfWeek[dayOfWeekIndex])) {
                             cell.classList.add('weekend-day-cell');
-                            cell.classList.remove('bg-white', 'dark:bg-gray-800');
                         }
 
                         const topRowContainer = document.createElement('div');
                         topRowContainer.className = 'flex justify-between items-start w-full mb-1';
-
                         const dayNumberEl = document.createElement('span');
-                        dayNumberEl.className = 'text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100';
+                        dayNumberEl.className = 'text-sm sm:text-base font-semibold text-primary';
                         dayNumberEl.textContent = day;
                         topRowContainer.appendChild(dayNumberEl);
 
                         if (showMoonPhases) {
-                            const moonPhaseIndex = getLuminusMoonPhase(hiraethYear, hiraethMonth, day);
-                            const moonEmoji = HIRAETH_CONFIG.primaryMoon.phases[moonPhaseIndex];
                             const moonPhaseEl = document.createElement('div');
-                            moonPhaseEl.className = 'text-lg text-gray-700 dark:text-gray-300 hidden sm:block';
-                            moonPhaseEl.textContent = moonEmoji;
+                            moonPhaseEl.className = 'text-lg text-secondary hidden sm:block'; 
+                            moonPhaseEl.textContent = HIRAETH_CONFIG.primaryMoon.phases[getLuminusMoonPhase(hiraethYear, hiraethMonth, day)];
                             topRowContainer.appendChild(moonPhaseEl);
-                        } else {
-                            const moonPlaceholder = document.createElement('div');
-                            moonPlaceholder.className = 'w-6 h-6';
-                            topRowContainer.appendChild(moonPlaceholder);
+                        } else { 
+                            topRowContainer.appendChild(document.createElement('div')).className = 'w-6 h-6';
                         }
                         cell.appendChild(topRowContainer);
 
@@ -510,30 +661,36 @@
 
                         if (dayEvents.length > 0) {
                             const eventsContainer = document.createElement('div');
-                            eventsContainer.className = 'w-full space-y-1 px-1 max-h-[calc(100%-2.5rem)] overflow-y-auto';
+                            eventsContainer.className = 'w-full space-y-1 px-0.5 max-h-[calc(100%-2.9rem)] overflow-y-auto scrollbar-thin'; 
 
-                            dayEvents.slice(0, 2).forEach(event => {
-                                const eventMarker = document.createElement('div');
-                                eventMarker.className = 'flex items-center text-xs p-1 bg-green-200 dark:bg-green-700 text-green-800 dark:text-green-100 rounded truncate cursor-pointer hover:bg-green-300 dark:hover:bg-green-600';
+                            dayEvents.slice(0, 3).forEach(event => { // Show up to 3 events
+                                const eventColors = getEventColors(event);
+                                const eventMarkerEl = document.createElement('div');
+                                eventMarkerEl.className = 'event-marker-item'; // Use new class
+                                eventMarkerEl.style.backgroundColor = eventColors.bg;
+                                eventMarkerEl.style.color = eventColors.text;
+                                
                                 const markerDot = document.createElement('span');
-                                markerDot.className = 'event-marker bg-green-500 dark:bg-green-400';
-                                eventMarker.appendChild(markerDot);
+                                markerDot.className = 'event-marker-dot'; // Use new class
+                                markerDot.style.backgroundColor = eventColors.dot; 
+                                eventMarkerEl.appendChild(markerDot);
+                                
                                 const eventTitle = document.createElement('span');
-                                eventTitle.className = 'truncate';
                                 eventTitle.textContent = event.title;
-                                eventMarker.appendChild(eventTitle);
-                                eventMarker.addEventListener('click', (e) => {
-                                    e.stopPropagation();
+                                eventMarkerEl.appendChild(eventTitle);
+
+                                eventMarkerEl.addEventListener('click', (e) => {
+                                    e.stopPropagation(); 
                                     showSingleEventDetails(event, hiraethYear, hiraethMonth, day);
                                 });
-                                eventsContainer.appendChild(eventMarker);
+                                eventsContainer.appendChild(eventMarkerEl);
                             });
-                            if (dayEvents.length > 2) {
+                            if (dayEvents.length > 3) { // Adjusted for 3 displayed
                                 const moreEventsEl = document.createElement('div');
-                                moreEventsEl.className = 'text-xs text-blue-600 dark:text-blue-400 text-center font-medium cursor-pointer hover:underline';
-                                moreEventsEl.textContent = `+${dayEvents.length - 2} more`;
+                                moreEventsEl.className = 'text-xs text-accent text-center font-medium cursor-pointer hover:underline pt-0.5';
+                                moreEventsEl.textContent = `+${dayEvents.length - 3} more`;
                                 moreEventsEl.addEventListener('click', (e) => {
-                                    e.stopPropagation();
+                                    e.stopPropagation(); 
                                     showDateDetails(hiraethYear, hiraethMonth, day, dayEvents);
                                 });
                                 eventsContainer.appendChild(moreEventsEl);
@@ -545,13 +702,10 @@
                         });
                         monthGridDaysEl.appendChild(cell);
                     }
-                } else { console.error("[renderCalendar] monthGridDaysEl not found."); }
-                console.log("[renderCalendar] Calendar rendering process completed successfully.");
-            } catch (error) {
-                console.error("[renderCalendar] Uncaught error during rendering:", error);
-                if (appContainer) {
-                    appContainer.innerHTML = `<div class="p-4 text-red-500">Error rendering calendar. Check console. Details: ${error.message}</div>`;
                 }
+            } catch (error) {
+                console.error("[renderCalendar] Error:", error);
+                if (appContainer) appContainer.innerHTML = `<div class="p-4 text-red-500 frosted-glass">Render error. Check console.</div>`;
             }
         }
 
@@ -559,17 +713,20 @@
             const monthName = HIRAETH_CONFIG.months[month].name;
             const dayGlobalEpoch = hiraethDateToGlobalEpochDays(year, month, day);
             const dayName = HIRAETH_CONFIG.daysOfWeek[ (dayGlobalEpoch - 1 + HIRAETH_CONFIG.daysOfWeek.length) % HIRAETH_CONFIG.daysOfWeek.length ];
+            const eventColors = getEventColors(eventObj);
+            
             let modalDialogTitle = `Event: ${eventObj.title}`;
-            let content = `<p class="text-md mb-1 text-gray-600 dark:text-gray-400">On: ${dayName}, ${day} ${monthName} ${String(year).padStart(4, '0')}</p>`;
-            content += `<p class="text-lg mb-2 text-gray-700 dark:text-gray-300">Luminus Moon: ${HIRAETH_CONFIG.primaryMoon.phases[getLuminusMoonPhase(year, month, day)]}</p>`;
-            content += `<h5 class="text-md font-semibold mt-3 mb-1 text-gray-800 dark:text-gray-100">Details:</h5>`;
-            content += '<ul id="modal-event-list" class="list-none space-y-1 text-gray-700 dark:text-gray-300">';
+            let content = `<p class="text-md mb-1 text-secondary">On: ${dayName}, ${day} ${monthName} ${String(year).padStart(4, '0')}</p>`;
+            content += `<p class="text-lg mb-3 text-primary">Luminus Moon: ${HIRAETH_CONFIG.primaryMoon.phases[getLuminusMoonPhase(year, month, day)]}</p>`;
+            
+            content += `<h5 class="text-md font-semibold mt-3 mb-1 text-primary">Details:</h5>`;
+            content += '<ul id="modal-event-list" class="list-none space-y-2">'; 
             content += `
-                <li>
-                    <strong class="text-gray-800 dark:text-gray-200 text-xl">${eventObj.title}</strong>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Original Date: ${eventObj.date}</p>
-                    <p class="text-sm mt-1">${eventObj.description || 'No description.'}</p>
-                    ${eventObj.group ? `<p class="text-sm mt-1"><em>(Group: ${eventObj.group})</em></p>` : ''}
+                <li class="p-3.5 rounded-lg" style="border-left: 6px solid ${eventColors.bg}; background-color: ${document.documentElement.classList.contains('dark') ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'};">
+                    <strong class="text-xl block mb-1" style="color: ${eventColors.text};">${eventObj.title}</strong>
+                    <p class="text-xs text-secondary">Original Date: ${eventObj.date} (${eventObj.sourceCalendarName || 'Unknown Calendar'})</p>
+                    <p class="text-sm mt-2 whitespace-pre-wrap" style="color: ${eventColors.text};">${eventObj.description || 'No description.'}</p>
+                    ${eventObj.group ? `<p class="text-sm mt-2 italic text-secondary">(Group: ${eventObj.group})</p>` : ''}
                 </li>`;
             content += '</ul>';
             openModal(modalDialogTitle, content);
@@ -579,64 +736,75 @@
             const monthName = HIRAETH_CONFIG.months[month].name;
             const dayGlobalEpoch = hiraethDateToGlobalEpochDays(year, month, day);
             const dayName = HIRAETH_CONFIG.daysOfWeek[ (dayGlobalEpoch - 1 + HIRAETH_CONFIG.daysOfWeek.length) % HIRAETH_CONFIG.daysOfWeek.length ];
+
             let modalDialogTitle = `${dayName}, ${day} ${monthName} ${String(year).padStart(4, '0')}`;
-            let content = `<p class="text-xl mb-2 text-gray-700 dark:text-gray-300">Luminus Moon: ${HIRAETH_CONFIG.primaryMoon.phases[getLuminusMoonPhase(year, month, day)]}</p>`;
+            let content = `<p class="text-xl mb-3 text-primary">Luminus Moon: ${HIRAETH_CONFIG.primaryMoon.phases[getLuminusMoonPhase(year, month, day)]}</p>`;
+
             if (events.length > 0) {
-                content += `<h5 class="text-md font-semibold mt-3 mb-1 text-gray-800 dark:text-gray-100">Events on this day:</h5>`;
-                content += '<ul id="modal-event-list" class="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300">';
+                content += `<h5 class="text-md font-semibold mt-4 mb-2 text-primary">Events on this day:</h5>`;
+                content += '<ul id="modal-event-list" class="space-y-3">'; 
                 events.forEach(event => {
+                    const eventColors = getEventColors(event);
                     content += `
-                        <li>
-                            <strong class="text-gray-800 dark:text-gray-200">${event.title}</strong>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">${event.date}</p>
-                            <p class="text-sm">${event.description || 'No description.'} <em>(Group: ${event.group || 'General'})</em></p>
+                        <li class="p-3.5 rounded-lg hover:shadow-lg transition-shadow duration-150" style="border-left: 6px solid ${eventColors.bg}; background-color: ${document.documentElement.classList.contains('dark') ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'};">
+                            <strong class="block text-lg" style="color: ${eventColors.text};">${event.title}</strong>
+                            <p class="text-xs text-secondary mb-1">${event.date} (${event.sourceCalendarName || 'Unknown Calendar'})</p>
+                            <p class="text-sm whitespace-pre-wrap" style="color: ${eventColors.text};">${event.description || 'No description.'}</p>
+                            ${event.group ? `<span class="mt-1.5 text-xs px-2.5 py-1 rounded-full inline-block" style="background-color: ${eventColors.bg}; color: ${eventColors.text}; opacity: 0.85;">${event.group}</span>` : ''}
                         </li>`;
                 });
                 content += '</ul>';
             } else {
-                content += '<p class="text-gray-700 dark:text-gray-300">No events scheduled for this day.</p>';
+                content += '<p class="text-secondary">No events scheduled for this day.</p>';
             }
             openModal(modalDialogTitle, content);
         }
-
+        
         function performSearch(query) {
             const searchTerm = query.toLowerCase().trim();
-            const searchResultsDisplay = document.getElementById('search-results-display');
+            const searchResultsDisplay = document.getElementById('search-results-display'); 
             if (!searchResultsDisplay) return;
             if (!searchTerm) {
-                searchResultsDisplay.innerHTML = "<p class='text-gray-700 dark:text-gray-300'>Please enter a search term.</p>";
+                searchResultsDisplay.innerHTML = "<p class='text-secondary'>Please enter a search term.</p>";
                 return;
             }
+
             const allVisibleEvents = getVisibleEvents();
             const results = allVisibleEvents.filter(event =>
                 (event.title && event.title.toLowerCase().includes(searchTerm)) ||
                 (event.description && event.description.toLowerCase().includes(searchTerm)) ||
                 (event.group && event.group.toLowerCase().includes(searchTerm)) ||
-                (event.date && event.date.includes(searchTerm))
+                (event.date && event.date.includes(searchTerm)) 
             );
-            let resultsHtml = `<p class="text-sm text-gray-600 dark:text-gray-400 mb-2">${results.length} event(s) found for "${query}":</p>`;
+
+            let resultsHtml = `<p class="text-sm text-secondary mb-3">${results.length} event(s) found for "${query}":</p>`;
             if (results.length > 0) {
-                resultsHtml += '<ul id="search-results-list" class="space-y-2 max-h-60 overflow-y-auto">';
+                resultsHtml += '<ul id="search-results-list" class="space-y-2 max-h-80 overflow-y-auto scrollbar-thin">'; // Increased max-h
                 results.forEach(event => {
+                    const eventColors = getEventColors(event);
                     resultsHtml += `
-                        <li class="p-2 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 rounded">
-                            <strong class="text-gray-800 dark:text-gray-100">${event.title}</strong> (${event.date})
-                            <p class="text-sm text-gray-600 dark:text-gray-400">${event.description || 'No description.'}</p>
-                            ${event.group ? `<span class="text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded-full">${event.group}</span>` : ''}
+                        <li class="p-3.5 rounded-lg" style="border-left: 6px solid ${eventColors.bg}; background-color: ${document.documentElement.classList.contains('dark') ? 'rgba(var(--accent-dark-rgb), 0.04)' : 'rgba(var(--accent-light-rgb), 0.03)'};">
+                            <strong style="color: ${eventColors.text};">${event.title}</strong> <span class="text-xs text-secondary">(${event.date} - ${event.sourceCalendarName || 'Unknown'})</span>
+                            <p class="text-sm text-secondary mt-1" style="color: ${eventColors.text};">${event.description || 'No description.'}</p>
+                            ${event.group ? `<span class="mt-1.5 text-xs px-2 py-0.5 rounded-full inline-block" style="background-color: ${eventColors.bg}; color: ${eventColors.text}; opacity: 0.85;">${event.group}</span>` : ''}
                         </li>`;
                 });
                 resultsHtml += '</ul>';
             } else {
-                resultsHtml += '<p class="text-gray-700 dark:text-gray-300">No events match your search.</p>';
+                resultsHtml += '<p class="text-secondary">No events match your search.</p>';
             }
             searchResultsDisplay.innerHTML = resultsHtml;
         }
 
+        // --- NAVIGATION & INITIALIZATION ---
         function changeMonth(offset) {
             hiraethMonth += offset;
-            if (hiraethMonth > HIRAETH_CONFIG.months.length - 1) { hiraethMonth = 0; hiraethYear++; }
-            else if (hiraethMonth < 0) { hiraethMonth = HIRAETH_CONFIG.months.length - 1; hiraethYear--; }
-            hiraethDay = 1;
+            if (hiraethMonth > HIRAETH_CONFIG.months.length - 1) { 
+                hiraethMonth = 0; hiraethYear++;
+            } else if (hiraethMonth < 0) { 
+                hiraethMonth = HIRAETH_CONFIG.months.length - 1; hiraethYear--;
+            }
+            hiraethDay = 1; 
             renderCalendar();
         }
         function goToToday() {
@@ -646,67 +814,54 @@
 
         async function init() {
             if (!appContainer) {
-                console.error("[init] CRITICAL: app-container element NOT FOUND.");
-                document.body.innerHTML = '<p class="p-4 text-red-500 text-center">Critical error: Application container not found.</p>';
+                document.body.innerHTML = '<p class="p-4 text-red-500 text-center frosted-glass">Critical error: App container missing.</p>';
                 return;
             }
-            console.log("[init] app-container found successfully.");
             try {
-                console.log(`[init] Initial state: Year=${hiraethYear}, Month=${hiraethMonth}, Day=${hiraethDay}, ShowMoon=${showMoonPhases}`);
-                setInitialTheme();
-                const essentialElements = [
-                    prevMonthButton, nextMonthButton, todayButton, loreButton,
-                    settingsButton, searchButton, closeModalButton, eventModal, zodiacDisplayEl
-                ];
+                setInitialTheme(); 
+                const essentialElements = [ prevMonthButton, nextMonthButton, todayButton, loreButton, settingsButton, searchButton, themeToggleButton, closeModalButton, eventModal, zodiacDisplayEl ];
                 if (essentialElements.some(el => !el)) {
-                    console.error("[init] CRITICAL: One or more essential UI elements are missing.");
-                    if (appContainer) appContainer.innerHTML = '<p class="p-4 text-red-500">Error: Essential UI elements missing.</p>';
+                    if (appContainer) appContainer.innerHTML = '<p class="p-4 text-red-500 frosted-glass">Error: UI elements missing.</p>';
                     return;
                 }
-                console.log("[init] All essential UI elements for listeners appear to be present.");
 
                 prevMonthButton.addEventListener('click', () => changeMonth(-1));
                 nextMonthButton.addEventListener('click', () => changeMonth(1));
                 todayButton.addEventListener('click', goToToday);
                 loreButton.addEventListener('click', () => openModal("Hiraeth Lore & Time", HIRAETH_CONFIG.loreText));
                 settingsButton.addEventListener('click', openSettingsModal);
+                themeToggleButton.addEventListener('click', toggleTheme);
+
                 searchButton.addEventListener('click', () => {
                     const searchModalContent = `
                         <div id="search-input-container" class="mb-4">
-                            <input type='text' id='search-query-input' class='w-full p-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-gray-200' placeholder='Search events by title, date, desc...'>
-                            <button id="execute-search-button" class="mt-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md shadow w-full">Search</button>
+                            <input type='text' id='search-query-input' 
+                                   class='w-full p-3 border border-[var(--border-light)] dark:border-[var(--border-dark)] rounded-lg bg-transparent text-primary placeholder-secondary focus:ring-2 focus:ring-[var(--accent-light)] dark:focus:ring-[var(--accent-dark)] outline-none' 
+                                   placeholder='Search events by title, date, desc...'>
+                            <button id="execute-search-button" class="mt-3 btn btn-primary w-full">Search</button>
                         </div>
-                        <div id="search-results-display"><p class="text-gray-600 dark:text-gray-400">Enter a term to search.</p></div>`;
+                        <div id="search-results-display"><p class="text-secondary">Enter a term to search.</p></div>`;
                     openModal("Search Events", searchModalContent);
                     const executeSearchBtn = document.getElementById('execute-search-button');
                     const searchQueryInput = document.getElementById('search-query-input');
                     if(executeSearchBtn && searchQueryInput) {
                         executeSearchBtn.addEventListener('click', () => performSearch(searchQueryInput.value));
                         searchQueryInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') performSearch(searchQueryInput.value); });
-                    } else {
-                        console.warn("[init] Search modal's input or button not found.");
                     }
                 });
                 closeModalButton.addEventListener('click', closeModal);
                 eventModal.addEventListener('click', (e) => { if (e.target === eventModal) closeModal(); });
 
-                await loadAllDefinedCalendars(); // This will now update `calendarLoadingStatusMessage`
-                console.log(`[init] After loadAllDefinedCalendars. allCalendarsData:`, JSON.parse(JSON.stringify(allCalendarsData)));
+                await loadAllDefinedCalendars(); 
                 activeCalendars.clear();
                 if (Object.keys(allCalendarsData).length > 0) {
-                    console.log(`[init] Defaulting to all loaded calendars active.`);
                     Object.keys(allCalendarsData).forEach(calName => activeCalendars.add(calName));
-                } else {
-                    console.log(`[init] No calendars loaded, or no calendars to make active by default.`);
                 }
-                console.log(`[init] Active calendars set to: [${Array.from(activeCalendars).join(', ')}]`);
-                renderCalendar(); // Initial render
+                renderCalendar(); 
                 console.log("[init] Initialization complete.");
             } catch (error) {
-                console.error("[init] CRITICAL ERROR DURING INITIALIZATION:", error);
-                if (appContainer) {
-                    appContainer.innerHTML = `<div class="p-4 text-red-500">Initialization error. Check console. Details: ${error.message}</div>`;
-                }
+                console.error("[init] CRITICAL ERROR:", error);
+                if (appContainer) appContainer.innerHTML = `<div class="p-4 text-red-500 frosted-glass">Init error. Check console.</div>`;
             }
         }
         document.addEventListener('DOMContentLoaded', init);
